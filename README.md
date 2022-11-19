@@ -1,15 +1,19 @@
-# lezer-poly
+# Poly parser
 
 To install dependencies:
 
-```bash
+```sh
 bun install
 ```
 
-To run:
+To generate the grammar:
 
-```bash
-bun run index.ts
+```sh
+bun run generate
 ```
 
-This project was created using `bun init` in bun v0.2.2. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+To test parsing:
+
+```sh
+bun run src/parse/parse.ts
+```

@@ -1,0 +1,93 @@
+@precedence { negative @right, times @left, plus @left }
+
+@top Program { statement* }
+
+Block {
+  "{" statement* "}"
+}
+
+statement {
+  DeclareStatement |
+  ExpressionStatement |
+  FunctionStatement |
+  ReturnStatement
+}
+
+optionalType {
+  (":" TypeExpression)?
+}
+
+DeclareStatement {
+  makeStatement<@specialize<Identifier, "let"> Identifier optionalType  "=" expression>
+}
+
+FunctionStatement {
+  @specialize<Identifier, "fn"> Identifier "(" Args ")" Block
+}
+
+ReturnStatement {
+  makeStatement<@specialize<Identifier, "return"> expression>
+}
+
+Args {
+  commaSep<Arg>
+}
+
+Arg {
+  Identifier optionalType
+}
+
+commaSep1<item> { item ("," item)* }
+commaSep<item> { commaSep1<item>? }
+
+TypeExpression {
+  Identifier | Number | String | (TypeExpression !plus "|" TypeExpression)
+}
+
+ExpressionStatement {
+  makeStatement<expression>
+}
+
+@skip {
+  whitespace
+}
+
+@skip {} {
+  String {
+    '"' (stringContent | Template)* '"'
+  }
+}
+
+stringContent {
+  char
+}
+
+Template {
+  "\\[" expression "]"
+}
+
+expression {
+  Identifier | Number | String | BinaryExpression | "(" expression ")" |
+  Negate
+}
+
+BinaryExpression {
+  expression !plus ("+" | "-") expression |
+  expression !times ("*" | "/") expression
+}
+
+Negate {
+  !negative "-" expression
+}
+
+makeStatement<content> { content ";" }
+
+@tokens {
+  Identifier { @asciiLetter+ }
+  Number { @digit+ }
+  whitespace { @whitespace+ }
+  char { $[\u{20}\u{21}\u{23}-\u{5b}\u{5d}-\u{10ffff}] | "\\" esc }
+  esc  { $["\\\/bfnrt] | "u" hex hex hex hex }
+  hex  { $[0-9a-fA-F] }
+  "+" "-" "*" "/"
+}
