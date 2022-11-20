@@ -11,7 +11,8 @@
     "bun-types": "^0.2.0"
   },
   "scripts": {
-    "generateAst": "bun run src/grammar/grammarConvert.ts > src/generated/ast.ts",
-    "generate": "lezer-generator src/grammar/poly.grammar -o src/generated/poly.js && bun run generateAst"
+    "generate": "bun run generate:grammar && bun run generate:ast",
+    "generate:ast": "bun run ./src/grammarConvert/grammarConvertCli.ts src/grammar/poly.grammar src/generated/ast.ts",
+    "generate:grammar": "lezer-generator src/grammar/poly.grammar -o src/generated/poly.js"
   }
 }

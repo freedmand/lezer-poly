@@ -1,3 +1,7 @@
+/**
+ * Defines highlighting for the Poly grammar
+ */
+
 import { styleTags, tags as t } from "@lezer/highlight";
 
 export const polyHighlighting = styleTags({

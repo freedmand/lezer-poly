@@ -1,3 +1,8 @@
+// The Poly grammar specification in Lezer
+//
+// Note: special documentation comments are used to generate AST
+// forming code. See ../grammarConvert/grammarConvert.ts for details.
+
 @precedence { negative @right, times @left, plus @left }
 
 @top Program { /** Statement[] */ statement* }
