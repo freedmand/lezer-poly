@@ -136,7 +136,7 @@ keyword<content> { @specialize[@name={content}]<Identifier, content> }
   Identifier { /** . */ @asciiLetter+ }
   Number { /** . */ @digit+ }
   whitespace { @whitespace+ }
-  char { $[\u{20}\u{21}\u{23}-\u{5b}\u{5d}-\u{10ffff}] | "\\" esc }
+  char { ($[\u{20}\u{21}\u{23}-\u{5b}\u{5d}-\u{10ffff}] | "\\" esc)+ }
   esc  { $["\\\/bfnrt] | "u" hex hex hex hex }
   hex  { $[0-9a-fA-F] }
   "+" "-" "*" "/" "[" "]" "{" "}" "\\["
