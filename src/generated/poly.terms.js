@@ -18,8 +18,8 @@ export const
   GroupExpression = 22,
   Negate = 23,
   UnionType = 25,
-  ExpressionStatement = 26,
-  FunctionStatement = 27,
-  Arg = 29,
-  Block = 30,
+  BlockStatement = 26,
+  ExpressionStatement = 29,
+  FunctionStatement = 30,
+  Arg = 32,
   ReturnStatement = 33

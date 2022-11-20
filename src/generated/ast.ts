@@ -21,23 +21,13 @@ export function parseProgram(context: Context, node: SyntaxNode): Program {
     statementList: statementList.map(statementList => parseStatement(context, statementList)),
   };
 }
-export interface Block {
-  // { {Statement[]} }
-  kind: "Block";
-  statementList: Statement[];
-}
-
-export function parseBlock(context: Context, node: SyntaxNode): Block {
-  const statementList = node.getChildren("Statement");
-  return {
-    kind: "Block",
-    statementList: statementList.map(statementList => parseStatement(context, statementList)),
-  };
-}
-export type Statement = DeclareStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
+export type Statement = DeclareStatement | BlockStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
 export function parseStatement(context: Context, node: SyntaxNode): Statement {
   if (node.name === "DeclareStatement") {
     return parseDeclareStatement(context, node);
+  }
+  if (node.name === "BlockStatement") {
+    return parseBlockStatement(context, node);
   }
   if (node.name === "ExpressionStatement") {
     return parseExpressionStatement(context, node);
@@ -69,23 +59,36 @@ export function parseDeclareStatement(context: Context, node: SyntaxNode): Decla
     expression: parseExpression(context, expression),
   };
 }
+export interface BlockStatement {
+  // { {Statement[]} }
+  kind: "BlockStatement";
+  statementList: Statement[];
+}
+
+export function parseBlockStatement(context: Context, node: SyntaxNode): BlockStatement {
+  const statementList = node.getChildren("Statement");
+  return {
+    kind: "BlockStatement",
+    statementList: statementList.map(statementList => parseStatement(context, statementList)),
+  };
+}
 export interface FunctionStatement {
-  // fn {Identifier} ( {Arg[]} ) {Block}
+  // fn {Identifier} ( {Arg[]} ) {BlockStatement}
   kind: "FunctionStatement";
   identifier: Identifier;
   argList: Arg[];
-  block: Block;
+  blockStatement: BlockStatement;
 }
 
 export function parseFunctionStatement(context: Context, node: SyntaxNode): FunctionStatement {
   const identifier = node.getChild("Identifier");
   const argList = node.getChildren("Arg");
-  const block = node.getChild("Block");
+  const blockStatement = node.getChild("BlockStatement");
   return {
     kind: "FunctionStatement",
     identifier: parseIdentifier(context, identifier),
     argList: argList.map(argList => parseArg(context, argList)),
-    block: parseBlock(context, block),
+    blockStatement: parseBlockStatement(context, blockStatement),
   };
 }
 export interface ReturnStatement {
@@ -101,49 +104,6 @@ export function parseReturnStatement(context: Context, node: SyntaxNode): Return
     optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : null,
   };
 }
-export interface Arg {
-  // {Identifier} {TypeExpression}
-  kind: "Arg";
-  identifier: Identifier;
-  optionalTypeExpression?: TypeExpression;
-}
-
-export function parseArg(context: Context, node: SyntaxNode): Arg {
-  const identifier = node.getChild("Identifier");
-  const optionalTypeExpression = node.getChild("TypeExpression");
-  return {
-    kind: "Arg",
-    identifier: parseIdentifier(context, identifier),
-    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : null,
-  };
-}
-export type TypeExpression = Identifier | Number | String | UnionType;
-export function parseTypeExpression(context: Context, node: SyntaxNode): TypeExpression {
-  const identifier = node.getChild("Identifier");
-  if (identifier != null) return parseIdentifier(context, identifier);
-  const number = node.getChild("Number");
-  if (number != null) return parseNumber(context, number);
-  const string = node.getChild("String");
-  if (string != null) return parseString(context, string);
-  const unionType = node.getChild("UnionType");
-  if (unionType != null) return parseUnionType(context, unionType);
-}
-
-export interface UnionType {
-  // {TypeExpression} | {TypeExpression}
-  kind: "UnionType";
-  typeExpression1: TypeExpression;
-  typeExpression2: TypeExpression;
-}
-
-export function parseUnionType(context: Context, node: SyntaxNode): UnionType {
-  const [typeExpression1, typeExpression2] = node.getChildren("TypeExpression");
-  return {
-    kind: "UnionType",
-    typeExpression1: parseTypeExpression(context, typeExpression1),
-    typeExpression2: parseTypeExpression(context, typeExpression2),
-  };
-}
 export interface ExpressionStatement {
   // {Expression}
   kind: "ExpressionStatement";
@@ -154,51 +114,6 @@ export function parseExpressionStatement(context: Context, node: SyntaxNode): Ex
   const expression = node.getChild("Expression");
   return {
     kind: "ExpressionStatement",
-    expression: parseExpression(context, expression),
-  };
-}
-export interface String {
-  // " {StringChunk[]} "
-  kind: "String";
-  stringChunkList: StringChunk[];
-}
-
-export function parseString(context: Context, node: SyntaxNode): String {
-  const stringChunkList = node.getChildren("StringChunk");
-  return {
-    kind: "String",
-    stringChunkList: stringChunkList.map(stringChunkList => parseStringChunk(context, stringChunkList)),
-  };
-}
-export type StringChunk = StringContent | Template;
-export function parseStringChunk(context: Context, node: SyntaxNode): StringChunk {
-  const stringContent = node.getChild("StringContent");
-  if (stringContent != null) return parseStringContent(context, stringContent);
-  const template = node.getChild("Template");
-  if (template != null) return parseTemplate(context, template);
-}
-
-export interface StringContent {
-  kind: "StringContent";
-  value: string;
-}
-
-export function parseStringContent(context: Context, node: SyntaxNode): StringContent {
-  return {
-    kind: "StringContent",
-    value: context.get(node),
-  };
-}
-export interface Template {
-  // \[ {Expression} ]
-  kind: "Template";
-  expression: Expression;
-}
-
-export function parseTemplate(context: Context, node: SyntaxNode): Template {
-  const expression = node.getChild("Expression");
-  return {
-    kind: "Template",
     expression: parseExpression(context, expression),
   };
 }
@@ -313,6 +228,94 @@ export function parseNegate(context: Context, node: SyntaxNode): Negate {
   const expression = node.getChild("Expression");
   return {
     kind: "Negate",
+    expression: parseExpression(context, expression),
+  };
+}
+export type TypeExpression = Identifier | Number | String | UnionType;
+export function parseTypeExpression(context: Context, node: SyntaxNode): TypeExpression {
+  const identifier = node.getChild("Identifier");
+  if (identifier != null) return parseIdentifier(context, identifier);
+  const number = node.getChild("Number");
+  if (number != null) return parseNumber(context, number);
+  const string = node.getChild("String");
+  if (string != null) return parseString(context, string);
+  const unionType = node.getChild("UnionType");
+  if (unionType != null) return parseUnionType(context, unionType);
+}
+
+export interface UnionType {
+  // {TypeExpression} | {TypeExpression}
+  kind: "UnionType";
+  typeExpression1: TypeExpression;
+  typeExpression2: TypeExpression;
+}
+
+export function parseUnionType(context: Context, node: SyntaxNode): UnionType {
+  const [typeExpression1, typeExpression2] = node.getChildren("TypeExpression");
+  return {
+    kind: "UnionType",
+    typeExpression1: parseTypeExpression(context, typeExpression1),
+    typeExpression2: parseTypeExpression(context, typeExpression2),
+  };
+}
+export interface Arg {
+  // {Identifier} {TypeExpression}
+  kind: "Arg";
+  identifier: Identifier;
+  optionalTypeExpression?: TypeExpression;
+}
+
+export function parseArg(context: Context, node: SyntaxNode): Arg {
+  const identifier = node.getChild("Identifier");
+  const optionalTypeExpression = node.getChild("TypeExpression");
+  return {
+    kind: "Arg",
+    identifier: parseIdentifier(context, identifier),
+    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : null,
+  };
+}
+export interface String {
+  // " {StringChunk[]} "
+  kind: "String";
+  stringChunkList: StringChunk[];
+}
+
+export function parseString(context: Context, node: SyntaxNode): String {
+  const stringChunkList = node.getChildren("StringChunk");
+  return {
+    kind: "String",
+    stringChunkList: stringChunkList.map(stringChunkList => parseStringChunk(context, stringChunkList)),
+  };
+}
+export type StringChunk = StringContent | Template;
+export function parseStringChunk(context: Context, node: SyntaxNode): StringChunk {
+  const stringContent = node.getChild("StringContent");
+  if (stringContent != null) return parseStringContent(context, stringContent);
+  const template = node.getChild("Template");
+  if (template != null) return parseTemplate(context, template);
+}
+
+export interface StringContent {
+  kind: "StringContent";
+  value: string;
+}
+
+export function parseStringContent(context: Context, node: SyntaxNode): StringContent {
+  return {
+    kind: "StringContent",
+    value: context.get(node),
+  };
+}
+export interface Template {
+  // \[ {Expression} ]
+  kind: "Template";
+  expression: Expression;
+}
+
+export function parseTemplate(context: Context, node: SyntaxNode): Template {
+  const expression = node.getChild("Expression");
+  return {
+    kind: "Template",
     expression: parseExpression(context, expression),
   };
 }

@@ -9,7 +9,7 @@ bun install
 To generate the grammar:
 
 ```sh
-bun run generate
+bun generate
 ```
 
 To test parsing:

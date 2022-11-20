@@ -2,21 +2,14 @@
 
 @top Program { /** Statement[] */ statement* }
 
-Block {
-  /** { Statement[] } */
-  "{" statement* "}"
-}
-
+// Statements
 statement[@isGroup=Statement] {
   /** | */
   DeclareStatement |
+  BlockStatement |
   ExpressionStatement |
   FunctionStatement |
   ReturnStatement
-}
-
-optionalType {
-  (":" TypeExpression)?
 }
 
 DeclareStatement {
@@ -24,9 +17,14 @@ DeclareStatement {
   makeStatement<keyword<"let"> Identifier optionalType "=" Expression>
 }
 
+BlockStatement {
+  /** { Statement[] } */
+  "{" statement* "}"
+}
+
 FunctionStatement {
-  /** fn Identifier ( Arg[] ) Block */
-  keyword<"fn"> Identifier "(" args ")" Block
+  /** fn Identifier ( Arg[] ) BlockStatement */
+  keyword<"fn"> Identifier "(" args ")" BlockStatement
 }
 
 ReturnStatement {
@@ -34,59 +32,12 @@ ReturnStatement {
   makeStatement<keyword<"return"> Expression?>
 }
 
-args {
-  commaSep<Arg>
-}
-
-Arg {
-  /** Identifier TypeExpression? */
-  Identifier optionalType
-}
-
-commaSep1<item> { item ("," item)* }
-commaSep<item> { commaSep1<item>? }
-
-TypeExpression {
-  /** | */
-  Identifier | Number | String | UnionType
-}
-
-UnionType {
-  /** TypeExpression | TypeExpression */
-  (TypeExpression !plus "|" TypeExpression)
-}
-
 ExpressionStatement {
   /** Expression */
   makeStatement<Expression>
 }
 
-@skip {
-  whitespace
-}
-
-@skip {} {
-  String {
-    /** " StringChunk[] " */
-    '"' StringChunk* '"'
-  }
-}
-
-StringChunk {
-  /** | */
-  StringContent | Template
-}
-
-StringContent {
-  /** . */
-  char
-}
-
-Template {
-  /** \[ Expression ] */
-  "\\[" Expression "]"
-}
-
+// Expressions
 Expression {
   /** | */
   Identifier | Number | String | BinaryExpression | GroupExpression |
@@ -128,8 +79,62 @@ Negate {
   !negative "-" Expression
 }
 
-makeStatement<content> { content ";" }
+// Types
+TypeExpression {
+  /** | */
+  Identifier | Number | String | UnionType
+}
 
+UnionType {
+  /** TypeExpression | TypeExpression */
+  (TypeExpression !plus "|" TypeExpression)
+}
+
+// Miscellaneous
+Arg {
+  /** Identifier TypeExpression? */
+  Identifier optionalType
+}
+
+optionalType {
+  (":" TypeExpression)?
+}
+
+args {
+  commaSep<Arg>
+}
+
+// Skip / strings
+@skip {
+  whitespace
+}
+
+@skip {} {
+  String {
+    /** " StringChunk[] " */
+    '"' StringChunk* '"'
+  }
+}
+
+StringChunk {
+  /** | */
+  StringContent | Template
+}
+
+StringContent {
+  /** . */
+  char
+}
+
+Template {
+  /** \[ Expression ] */
+  "\\[" Expression "]"
+}
+
+// Utils
+makeStatement<content> { content ";" }
+commaSep1<item> { item ("," item)* }
+commaSep<item> { commaSep1<item>? }
 keyword<content> { @specialize[@name={content}]<Identifier, content> }
 
 @tokens {
