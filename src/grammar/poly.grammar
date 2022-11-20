@@ -1,12 +1,14 @@
 @precedence { negative @right, times @left, plus @left }
 
-@top Program { statement* }
+@top Program { /** Statement[] */ statement* }
 
 Block {
+  /** { Statement[] } */
   "{" statement* "}"
 }
 
-statement {
+statement[@isGroup=Statement] {
+  /** | */
   DeclareStatement |
   ExpressionStatement |
   FunctionStatement |
@@ -18,22 +20,26 @@ optionalType {
 }
 
 DeclareStatement {
-  makeStatement<@specialize<Identifier, "let"> Identifier optionalType  "=" expression>
+  /** let Identifier TypeExpression? = Expression */
+  makeStatement<keyword<"let"> Identifier optionalType "=" Expression>
 }
 
 FunctionStatement {
-  @specialize<Identifier, "fn"> Identifier "(" Args ")" Block
+  /** fn Identifier ( Arg[] ) Block */
+  keyword<"fn"> Identifier "(" args ")" Block
 }
 
 ReturnStatement {
-  makeStatement<@specialize<Identifier, "return"> expression>
+  /** return Expression? */
+  makeStatement<keyword<"return"> Expression?>
 }
 
-Args {
+args {
   commaSep<Arg>
 }
 
 Arg {
+  /** Identifier TypeExpression? */
   Identifier optionalType
 }
 
@@ -41,11 +47,18 @@ commaSep1<item> { item ("," item)* }
 commaSep<item> { commaSep1<item>? }
 
 TypeExpression {
-  Identifier | Number | String | (TypeExpression !plus "|" TypeExpression)
+  /** | */
+  Identifier | Number | String | UnionType
+}
+
+UnionType {
+  /** TypeExpression | TypeExpression */
+  (TypeExpression !plus "|" TypeExpression)
 }
 
 ExpressionStatement {
-  makeStatement<expression>
+  /** Expression */
+  makeStatement<Expression>
 }
 
 @skip {
@@ -54,40 +67,79 @@ ExpressionStatement {
 
 @skip {} {
   String {
-    '"' (stringContent | Template)* '"'
+    /** " StringChunk[] " */
+    '"' StringChunk* '"'
   }
 }
 
-stringContent {
+StringChunk {
+  /** | */
+  StringContent | Template
+}
+
+StringContent {
+  /** . */
   char
 }
 
 Template {
-  "\\[" expression "]"
+  /** \[ Expression ] */
+  "\\[" Expression "]"
 }
 
-expression {
-  Identifier | Number | String | BinaryExpression | "(" expression ")" |
+Expression {
+  /** | */
+  Identifier | Number | String | BinaryExpression | GroupExpression |
   Negate
 }
 
+GroupExpression {
+  /** ( Expression ) */
+  "(" Expression ")"
+}
+
 BinaryExpression {
-  expression !plus ("+" | "-") expression |
-  expression !times ("*" | "/") expression
+  /** | */
+  PlusExpression | MinusExpression | TimesExpression | DivideExpression
+}
+
+PlusExpression {
+  /** Expression + Expression */
+  Expression !plus "+" Expression
+}
+
+MinusExpression {
+  /** Expression - Expression */
+  Expression !plus "-" Expression
+}
+
+TimesExpression {
+  /** Expression * Expression */
+  Expression !times "*" Expression
+}
+
+DivideExpression {
+  /** Expression / Expression */
+  Expression !times "/" Expression
 }
 
 Negate {
-  !negative "-" expression
+  /** - Expression */
+  !negative "-" Expression
 }
 
 makeStatement<content> { content ";" }
 
+keyword<content> { @specialize[@name={content}]<Identifier, content> }
+
 @tokens {
-  Identifier { @asciiLetter+ }
-  Number { @digit+ }
+  Identifier { /** . */ @asciiLetter+ }
+  Number { /** . */ @digit+ }
   whitespace { @whitespace+ }
   char { $[\u{20}\u{21}\u{23}-\u{5b}\u{5d}-\u{10ffff}] | "\\" esc }
   esc  { $["\\\/bfnrt] | "u" hex hex hex hex }
   hex  { $[0-9a-fA-F] }
-  "+" "-" "*" "/"
+  "+" "-" "*" "/" "[" "]" "{" "}" "\\["
 }
+
+@external propSource polyHighlighting from "../grammar/propSource"

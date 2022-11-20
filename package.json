@@ -2,11 +2,16 @@
   "name": "lezer-poly",
   "module": "index.ts",
   "type": "module",
+  "dependencies": {
+    "chalk": "^2.0.0",
+    "@lezer/highlight": "^1.1.2"
+  },
   "devDependencies": {
     "@lezer/generator": "^1.1.3",
     "bun-types": "^0.2.0"
   },
   "scripts": {
-    "generate": "lezer-generator src/grammar/poly.grammar -o src/generated/poly.js"
+    "generateAst": "bun run src/grammar/grammarConvert.ts > src/generated/ast.ts",
+    "generate": "lezer-generator src/grammar/poly.grammar -o src/generated/poly.js && bun run generateAst"
   }
 }
