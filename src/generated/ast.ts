@@ -140,16 +140,31 @@ export type AST = Program | Statement | DeclareStatement | BlockStatement | Func
 * the parsing process.
 */
 export class Context {
- constructor(readonly program: string) {}
+  constructor(readonly program: string) {}
 
- /**
-  * Gets the contents at the specified syntax node
-  * @param node The syntax node
-  * @returns The text of the program enclosed by this node
-  */
- get(node: SyntaxNode): string {
-   return this.program.substring(node.from, node.to);
- }
+  /**
+   * Gets the contents at the specified syntax node
+   * @param node The syntax node
+   * @returns The text of the program enclosed by this node
+   */
+  get(node: SyntaxNode): string {
+    return this.program.substring(node.from, node.to);
+  }
+
+  /**
+   * Gets the specified child from the parent node, ensuring it exists
+   * @param node The parent node
+   * @param child The child selector
+   * @returns The child of the parent, or an error if the extraction was
+   * unsuccessful (i.e. the getChild call returns null)
+   */
+  getChild(node: SyntaxNode, child: string): SyntaxNode {
+    const childNode = node.getChild(child);
+    if (childNode == null) {
+      throw new Error(`Expected child ${child} to be present on ${node.name}`);
+    }
+    return childNode;
+  }
 }
 
 export function parseProgram(context: Context, node: SyntaxNode): Program {
@@ -176,16 +191,17 @@ export function parseStatement(context: Context, node: SyntaxNode): Statement {
   if (node.name === "ReturnStatement") {
     return parseReturnStatement(context, node);
   }
+  throw new Error(`Invalid: ${node.name} cannot be parsed as Statement`);
 }
 
 export function parseDeclareStatement(context: Context, node: SyntaxNode): DeclareStatement {
-  const identifier = node.getChild("Identifier");
+  const identifier = context.getChild(node, "Identifier");
   const optionalTypeExpression = node.getChild("TypeExpression");
-  const expression = node.getChild("Expression");
+  const expression = context.getChild(node, "Expression");
   return {
     kind: "DeclareStatement",
     identifier: parseIdentifier(context, identifier),
-    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : null,
+    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : undefined,
     expression: parseExpression(context, expression),
   };
 }
@@ -199,9 +215,9 @@ export function parseBlockStatement(context: Context, node: SyntaxNode): BlockSt
 }
 
 export function parseFunctionStatement(context: Context, node: SyntaxNode): FunctionStatement {
-  const identifier = node.getChild("Identifier");
+  const identifier = context.getChild(node, "Identifier");
   const argList = node.getChildren("Arg");
-  const blockStatement = node.getChild("BlockStatement");
+  const blockStatement = context.getChild(node, "BlockStatement");
   return {
     kind: "FunctionStatement",
     identifier: parseIdentifier(context, identifier),
@@ -214,12 +230,12 @@ export function parseReturnStatement(context: Context, node: SyntaxNode): Return
   const optionalExpression = node.getChild("Expression");
   return {
     kind: "ReturnStatement",
-    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : null,
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
   };
 }
 
 export function parseExpressionStatement(context: Context, node: SyntaxNode): ExpressionStatement {
-  const expression = node.getChild("Expression");
+  const expression = context.getChild(node, "Expression");
   return {
     kind: "ExpressionStatement",
     expression: parseExpression(context, expression),
@@ -239,10 +255,11 @@ export function parseExpression(context: Context, node: SyntaxNode): Expression 
   if (groupExpression != null) return parseGroupExpression(context, groupExpression);
   const negate = node.getChild("Negate");
   if (negate != null) return parseNegate(context, negate);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as Expression`);
 }
 
 export function parseGroupExpression(context: Context, node: SyntaxNode): GroupExpression {
-  const expression = node.getChild("Expression");
+  const expression = context.getChild(node, "Expression");
   return {
     kind: "GroupExpression",
     expression: parseExpression(context, expression),
@@ -258,6 +275,7 @@ export function parseBinaryExpression(context: Context, node: SyntaxNode): Binar
   if (timesExpression != null) return parseTimesExpression(context, timesExpression);
   const divideExpression = node.getChild("DivideExpression");
   if (divideExpression != null) return parseDivideExpression(context, divideExpression);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as BinaryExpression`);
 }
 
 export function parsePlusExpression(context: Context, node: SyntaxNode): PlusExpression {
@@ -297,7 +315,7 @@ export function parseDivideExpression(context: Context, node: SyntaxNode): Divid
 }
 
 export function parseNegate(context: Context, node: SyntaxNode): Negate {
-  const expression = node.getChild("Expression");
+  const expression = context.getChild(node, "Expression");
   return {
     kind: "Negate",
     expression: parseExpression(context, expression),
@@ -313,6 +331,7 @@ export function parseTypeExpression(context: Context, node: SyntaxNode): TypeExp
   if (string != null) return parseString(context, string);
   const unionType = node.getChild("UnionType");
   if (unionType != null) return parseUnionType(context, unionType);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as TypeExpression`);
 }
 
 export function parseUnionType(context: Context, node: SyntaxNode): UnionType {
@@ -325,12 +344,12 @@ export function parseUnionType(context: Context, node: SyntaxNode): UnionType {
 }
 
 export function parseArg(context: Context, node: SyntaxNode): Arg {
-  const identifier = node.getChild("Identifier");
+  const identifier = context.getChild(node, "Identifier");
   const optionalTypeExpression = node.getChild("TypeExpression");
   return {
     kind: "Arg",
     identifier: parseIdentifier(context, identifier),
-    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : null,
+    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : undefined,
   };
 }
 
@@ -347,6 +366,7 @@ export function parseStringChunk(context: Context, node: SyntaxNode): StringChun
   if (stringContent != null) return parseStringContent(context, stringContent);
   const template = node.getChild("Template");
   if (template != null) return parseTemplate(context, template);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as StringChunk`);
 }
 
 export function parseStringContent(context: Context, node: SyntaxNode): StringContent {
@@ -357,7 +377,7 @@ export function parseStringContent(context: Context, node: SyntaxNode): StringCo
 }
 
 export function parseTemplate(context: Context, node: SyntaxNode): Template {
-  const expression = node.getChild("Expression");
+  const expression = context.getChild(node, "Expression");
   return {
     kind: "Template",
     expression: parseExpression(context, expression),

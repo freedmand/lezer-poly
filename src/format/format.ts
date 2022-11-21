@@ -1,17 +1,12 @@
 export type Doc = Nil | Text | Line | Nest | Concat | Union;
 
-export interface HighlightedText {
-  text: string;
-  color: string;
-}
-
 export interface Nil {
   type: "Nil";
 }
 
 export interface Text {
   type: "Text";
-  highlightedText: HighlightedText;
+  text: string;
 }
 
 export interface Line {
@@ -40,7 +35,7 @@ type LayoutDoc = TextLayoutDoc | LineLayoutDoc | NilLayoutDoc;
 
 interface TextLayoutDoc {
   type: "Text";
-  highlightedText: HighlightedText;
+  text: string;
   next: () => LayoutDoc;
 }
 
@@ -59,17 +54,14 @@ type DocumentPair = [number, Doc];
 // Take in a function and wrap it so that the function is cached
 // on first invocation and returns results instantly thereafter.
 function lazy<T>(closure: () => T): () => T {
-  let cached = null;
+  let cached: T | null = null;
   return () => (cached == null ? (cached = closure()) : cached);
 }
 
-function fits(remainingWidth: number, layoutDoc: LayoutDoc) {
+function fits(remainingWidth: number, layoutDoc: LayoutDoc): boolean {
   if (remainingWidth < 0) return false;
   if (layoutDoc.type == "Text") {
-    return fits(
-      remainingWidth - layoutDoc.highlightedText.text.length,
-      layoutDoc.next()
-    );
+    return fits(remainingWidth - layoutDoc.text.length, layoutDoc.next());
   }
   // If the layout is of type `line` or `nil` it always fits.
   return true;
@@ -86,45 +78,50 @@ function best(
   const [indent, doc] = documentPairs[0];
   const nextDocs = documentPairs.slice(1);
   // Convenience function to recurse
-  const _best = (newDocs = [], lw = lineWidth): LayoutDoc => {
+  const _best = (newDocs: DocumentPair[] = [], lw = lineWidth): LayoutDoc => {
     return best(maxLineWidth, lw, newDocs.concat(nextDocs));
   };
 
-  if (doc.type == "Nil") return _best();
-  if (doc.type == "Concat") return _best(doc.docs.map((doc) => [indent, doc]));
-  if (doc.type == "Nest") return _best([[indent + doc.indent, doc.doc]]);
-  if (doc.type == "Union") {
-    // See if first doc in union fits; if not, use second
-    const doc1 = _best([[indent, doc.a()]]);
-    if (fits(maxLineWidth - lineWidth, doc1)) return doc1;
-    return _best([[indent, doc.b()]]);
-  }
+  switch (doc.type) {
+    case "Nil":
+      return _best();
+    case "Concat":
+      return _best(doc.docs.map((doc) => [indent, doc]));
+    case "Nest":
+      return _best([[indent + doc.indent, doc.doc]]);
+    case "Union": {
+      // See if first doc in union fits; if not, use second
+      const doc1 = _best([[indent, doc.a()]]);
+      if (fits(maxLineWidth - lineWidth, doc1)) return doc1;
+      return _best([[indent, doc.b()]]);
+    }
 
-  // Text and lines output layout chains
-  if (doc.type == "Text") {
-    const newLineWidth = lineWidth + doc.highlightedText.text.length;
-    return {
-      type: "Text",
-      highlightedText: doc.highlightedText,
-      next: lazy(() => _best([], newLineWidth)),
-    };
-  }
-  if (doc.type == "Line") {
-    return {
-      type: "Line",
-      text: `\n${" ".repeat(indent)}`,
-      next: lazy(() => _best([], indent)),
-    };
+    // Text and lines output layout chains
+    case "Text": {
+      const newLineWidth = lineWidth + doc.text.length;
+      return {
+        type: "Text",
+        text: doc.text,
+        next: lazy(() => _best([], newLineWidth)),
+      };
+    }
+    case "Line": {
+      return {
+        type: "Line",
+        text: `\n${" ".repeat(indent)}`,
+        next: lazy(() => _best([], indent)),
+      };
+    }
   }
 }
 
-function unravelLayout(layoutDoc: LayoutDoc): HighlightedText[] {
-  const results: HighlightedText[] = [];
+function unravelLayout(layoutDoc: LayoutDoc): string[] {
+  const results: string[] = [];
   while (layoutDoc.type != "Nil") {
     if (layoutDoc.type === "Text") {
-      results.push(layoutDoc.highlightedText);
+      results.push(layoutDoc.text);
     } else {
-      results.push({ text: layoutDoc.text, color: "" });
+      results.push(layoutDoc.text);
     }
     layoutDoc = layoutDoc.next();
   }
@@ -143,14 +140,14 @@ function flatten(doc: Doc): Doc {
   if (doc.type == "Line")
     return {
       type: "Text",
-      highlightedText: { text: doc.reducedText, color: "" },
+      text: doc.reducedText,
     };
 
   // If doc is text or nil, it's unchanged
   return doc;
 }
 
-function group(doc) {
+function group(doc: Doc): Doc {
   // Unions are evaluated lazily
   return { type: "Union", a: lazy(() => flatten(doc)), b: lazy(() => doc) };
 }

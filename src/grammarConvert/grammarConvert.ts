@@ -55,16 +55,31 @@ const PARSING_FUNCTION_FRONT = `
 * the parsing process.
 */
 export class Context {
- constructor(readonly program: string) {}
+  constructor(readonly program: string) {}
 
- /**
-  * Gets the contents at the specified syntax node
-  * @param node The syntax node
-  * @returns The text of the program enclosed by this node
-  */
- get(node: SyntaxNode): string {
-   return this.program.substring(node.from, node.to);
- }
+  /**
+   * Gets the contents at the specified syntax node
+   * @param node The syntax node
+   * @returns The text of the program enclosed by this node
+   */
+  get(node: SyntaxNode): string {
+    return this.program.substring(node.from, node.to);
+  }
+
+  /**
+   * Gets the specified child from the parent node, ensuring it exists
+   * @param node The parent node
+   * @param child The child selector
+   * @returns The child of the parent, or an error if the extraction was
+   * unsuccessful (i.e. the getChild call returns null)
+   */
+  getChild(node: SyntaxNode, child: string): SyntaxNode {
+    const childNode = node.getChild(child);
+    if (childNode == null) {
+      throw new Error(\`Expected child \${child} to be present on \${node.name}\`);
+    }
+    return childNode;
+  }
 }\n\n`;
 
 /**
@@ -284,7 +299,7 @@ class Comment {
       const name = subtype.getName();
       if (this.singlePlainNames.includes(name)) {
         // Parse plain name
-        parseFunction += `  const ${name} = node.getChild(${JSON.stringify(
+        parseFunction += `  const ${name} = context.getChild(node, ${JSON.stringify(
           subtype.name
         )});\n`;
         returnNames.push(
@@ -298,7 +313,7 @@ class Comment {
         returnNames.push(
           `${name}: ${name} != null ? parse${uppercaseFirst(
             subtype.name
-          )}(context, ${name}) : null`
+          )}(context, ${name}) : undefined`
         );
       } else if (this.singleListNames.includes(name)) {
         // Parse list
@@ -463,6 +478,7 @@ ${this.unions
     }
   })
   .join("\n")}
+  throw new Error(\`Invalid: \${node.name} cannot be parsed as ${this.name}\`);
 }\n\n`;
   }
 }
@@ -510,8 +526,9 @@ export function convertGrammarToTypeScriptAst(document: string): string {
     // Track the original rule name before regularization
     const originalName = rule;
     // Regularize isGroup
-    if (rule.includes("@isGroup=")) {
-      rule = /\[@isGroup=(.*)\]/.exec(rule)[1];
+    const groupExtract = /\[@isGroup=(.*)\]/.exec(rule);
+    if (groupExtract != null) {
+      rule = groupExtract[1];
     }
 
     if (comment === "|") {

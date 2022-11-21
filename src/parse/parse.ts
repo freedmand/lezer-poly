@@ -42,7 +42,7 @@ ${keys
   .map(
     (key) =>
       `${INDENT.repeat(indent + 1)}${chalk.blue(key)}: ${valueToString(
-        ast[key],
+        (ast as any)[key],
         indent + 1
       )}`
   )
