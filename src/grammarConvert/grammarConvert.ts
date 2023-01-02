@@ -455,7 +455,11 @@ class UnionTypeRuleset {
   toUnionType(): string {
     return `export type ${this.name} = ${this.unions
       .map(uppercaseFirst)
-      .join(" | ")};\n\n`;
+      .join(" | ")};\nexport const ${lowercaseFirst(
+      this.name
+    )}Types = [${this.unions
+      .map((x) => JSON.stringify(uppercaseFirst(x)))
+      .join(", ")}]\n\n`;
   }
 
   /**
