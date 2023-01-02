@@ -5,16 +5,41 @@ import {
   debugPrintTree,
   syntaxHighlightProgram,
 } from "../helpers/print";
+import { interpret } from "../interpreter/interpret";
 
-const program = `fn X(a: Name) {
-  let x = 2;
-  return x;
-}
-let x: Int | String = 2;
--2 - - (2+3 + "dog \\[hello + 3 + "woah \\[2]"]'\\n");`;
+const program = `
+let x: string = 2;
+console.log(x + 5 * 3);
+`;
+
+// const program = ``;
+
+// const a = `
+// program {
+//   Div("Hello world");
+// }
+// `;
+
+// const b = `
+// program {
+//   let count = 0;
+
+//   Div(
+//     H1("Counter"),
+//     Div("Count: \[count]"),
+//     Div(
+//       Button("+", @click=() => count++),
+//       Button("-", @click=() => count--),
+//     ),
+//   );
+// }
+// `;
 
 const tree = parser.parse(program);
-
-debugPrintTree(program, parser.parse(program));
-console.log(astToString(parseProgram(new Context(program), tree.topNode)));
+const ast = parseProgram(new Context(program), tree.topNode);
+console.log(ast);
+// debugPrintTree(program, parser.parse(program));
+// console.log(astToString(parseProgram(new Context(program), tree.topNode)));
 console.log(syntaxHighlightProgram(program, tree));
+
+interpret(ast);

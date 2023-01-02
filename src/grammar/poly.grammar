@@ -3,7 +3,7 @@
 // Note: special documentation comments are used to generate AST
 // forming code. See ../grammarConvert/grammarConvert.ts for details.
 
-@precedence { negative @right, times @left, plus @left }
+@precedence { negative @right, times @left, plus @left, dictionary @cut }
 
 @top Program { /** Statement[] */ statement* }
 
@@ -28,8 +28,8 @@ BlockStatement {
 }
 
 FunctionStatement {
-  /** fn Identifier ( Arg[] ) BlockStatement */
-  keyword<"fn"> Identifier "(" args ")" BlockStatement
+  /** fn Identifier ( Param[] ) BlockStatement */
+  keyword<"fn"> Identifier "(" params ")" BlockStatement
 }
 
 ReturnStatement {
@@ -46,7 +46,32 @@ ExpressionStatement {
 Expression {
   /** | */
   Identifier | Number | String | BinaryExpression | GroupExpression |
-  Negate
+  Negate | MemberExpression | CallExpression | ListExpression | DictionaryExpression
+}
+
+ListExpression {
+  /** [ Expression[] ] */
+  "[" commaSep<Expression> "]"
+}
+
+DictionaryExpression {
+  /** { DictionaryItem[] } */
+  !dictionary "{" commaSep<DictionaryItem> "}"
+}
+
+DictionaryItem {
+  /** Identifier :? Expression? */
+  Identifier (":" Expression)?
+}
+
+MemberExpression {
+  /** Expression . Identifier */
+  Expression "." Identifier
+}
+
+CallExpression {
+  /** Expression ( Arg[] ) */
+  Expression "(" args ")"
 }
 
 GroupExpression {
@@ -96,13 +121,26 @@ UnionType {
 }
 
 // Miscellaneous
+Param {
+  /** Identifier TypeExpression? Expression? */
+  Identifier optionalType optionalDefault
+}
+
 Arg {
-  /** Identifier TypeExpression? */
-  Identifier optionalType
+  /** Identifier? =? Expression */
+  (Identifier "=")? Expression
 }
 
 optionalType {
   (":" TypeExpression)?
+}
+
+optionalDefault {
+  ("=" Expression)?
+}
+
+params {
+  commaSep<Param>
 }
 
 args {
@@ -143,7 +181,7 @@ commaSep<item> { commaSep1<item>? }
 keyword<content> { @specialize[@name={content}]<Identifier, content> }
 
 @tokens {
-  Identifier { /** . */ @asciiLetter+ }
+  Identifier { /** . */ "@"? @asciiLetter+ }
   Number { /** . */ @digit+ }
   whitespace { @whitespace+ }
   char { ($[\u{20}\u{21}\u{23}-\u{5b}\u{5d}-\u{10ffff}] | "\\" esc)+ }
@@ -152,4 +190,4 @@ keyword<content> { @specialize[@name={content}]<Identifier, content> }
   "+" "-" "*" "/" "[" "]" "{" "}" "\\["
 }
 
-@external propSource polyHighlighting from "../grammar/propSource"
+@external propSource polyHighlighting from "../grammar/propSource.js"

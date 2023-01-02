@@ -94,7 +94,8 @@ class Subtype {
   constructor(
     readonly kind: "plain" | "list" | "optional",
     readonly name: string,
-    readonly overrideType?: string
+    readonly overrideType?: string,
+    readonly extraInfo = ""
   ) {}
 
   /**
@@ -130,7 +131,7 @@ class Subtype {
   toCommentString(): string {
     // Surround the type string by "{}" to make it look nicer
     // Add back in the optional suffix that isn't represented in toTypeString
-    return `{${this.toTypeString()}${this.kind === "optional" ? "?" : ""}}`;
+    return `${this.toTypeString()}${this.kind === "optional" ? "?" : ""}`;
   }
 
   /**
@@ -150,7 +151,7 @@ class Subtype {
 }
 
 /** A regular expression to parse subtypes */
-const SUBTYPE_RE = /([A-Z][a-zA-Z]*)(\[\]|\?)?/;
+const SUBTYPE_RE = /([A-Z][a-zA-Z]*)(\[.*\]|\?)?/;
 
 class Comment {
   /** The raw parts of the comment (every space-delimeted feature) */
@@ -194,9 +195,14 @@ class Comment {
       if (partMatch != null) {
         // A subtype was successfully extracted
         let type: Subtype;
-        if (partMatch[2] === "[]") {
+        if (partMatch[2] != null && partMatch[2].startsWith("[")) {
           // Create a list subtype
-          type = new Subtype("list", partMatch[1]);
+          type = new Subtype(
+            "list",
+            partMatch[1],
+            undefined,
+            partMatch[2].slice(1, -1)
+          );
           this.listNames[type.getName()] = true;
         } else if (partMatch[2] === "?") {
           // Create an optional subtype
@@ -319,7 +325,9 @@ class Comment {
         // Parse list
         parseFunction += `  const ${name} = node.getChildren(${JSON.stringify(
           subtype.name
-        )});\n`;
+        )})${
+          subtype.extraInfo !== "" ? `.slice(${subtype.extraInfo})` : ""
+        };\n`;
         returnNames.push(
           `${name}: ${name}.map(${name} => parse${uppercaseFirst(
             subtype.name
@@ -384,14 +392,16 @@ class InterfaceRuleset {
    * @returns The TypeScript interface describing the ruleset's type
    */
   toInterface(): string {
-    return `export interface ${this.name} {
-${
-  // Pull the comment if specified
-  this.comment.comment.length > 0 ? `  // ${this.comment.toComment()}\n` : ""
-}  kind: ${
-      // Grab the "kind" for all interfaces; this is the discriminated prop
-      JSON.stringify(this.name)
-    };${
+    return `${
+      // Pull the comment if specified
+      this.comment.comment.length > 0
+        ? `/** ${this.comment.toComment()} */\n`
+        : ""
+    }export interface ${this.name} {
+  kind: ${
+    // Grab the "kind" for all interfaces; this is the discriminated prop
+    JSON.stringify(this.name)
+  };${
       // Pull the interface body out of the parsed comment
       this.comment.toInterface()
     }
