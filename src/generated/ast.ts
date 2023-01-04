@@ -8,15 +8,23 @@ export interface Program {
   statementList: Statement[];
 }
 
-export type Statement = DeclareStatement | BlockStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
-export const statementTypes = ["DeclareStatement", "BlockStatement", "ExpressionStatement", "FunctionStatement", "ReturnStatement"]
+export type Statement = DeclareStatement | DeclareTypeStatement | BlockStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
+export const statementTypes = ["DeclareStatement", "DeclareTypeStatement", "BlockStatement", "ExpressionStatement", "FunctionStatement", "ReturnStatement"]
 
-/** let Identifier TypeExpression? = Expression */
+/** (let|var) Identifier TypeExpression? = Expression */
 export interface DeclareStatement {
   kind: "DeclareStatement";
   identifier: Identifier;
   optionalTypeExpression?: TypeExpression;
   expression: Expression;
+}
+
+/** type TypeIdentifier TypeExpression? = TypeExpression */
+export interface DeclareTypeStatement {
+  kind: "DeclareTypeStatement";
+  typeIdentifier: TypeIdentifier;
+  optionalTypeExpression?: TypeExpression;
+  typeExpression: TypeExpression;
 }
 
 /** { Statement[] } */
@@ -25,11 +33,12 @@ export interface BlockStatement {
   statementList: Statement[];
 }
 
-/** fn Identifier ( Param[] ) BlockStatement */
+/** fn Identifier ( Param[] ) TypeExpression? BlockStatement */
 export interface FunctionStatement {
   kind: "FunctionStatement";
   identifier: Identifier;
   paramList: Param[];
+  optionalTypeExpression?: TypeExpression;
   blockStatement: BlockStatement;
 }
 
@@ -124,8 +133,8 @@ export interface Negate {
   expression: Expression;
 }
 
-export type TypeExpression = Identifier | Number | String | UnionType;
-export const typeExpressionTypes = ["Identifier", "Number", "String", "UnionType"]
+export type TypeExpression = TypeIdentifier | Number | String | UnionType;
+export const typeExpressionTypes = ["TypeIdentifier", "Number", "String", "UnionType"]
 
 /** TypeExpression | TypeExpression */
 export interface UnionType {
@@ -174,12 +183,17 @@ export interface Identifier {
   value: string;
 }
 
+export interface TypeIdentifier {
+  kind: "TypeIdentifier";
+  value: string;
+}
+
 export interface Number {
   kind: "Number";
   value: string;
 }
 
-export type AST = Program | Statement | DeclareStatement | BlockStatement | FunctionStatement | ReturnStatement | ExpressionStatement | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | Negate | TypeExpression | UnionType | Param | Arg | String | StringChunk | StringContent | Template | Identifier | Number;
+export type AST = Program | Statement | DeclareStatement | DeclareTypeStatement | BlockStatement | FunctionStatement | ReturnStatement | ExpressionStatement | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | Negate | TypeExpression | UnionType | Param | Arg | String | StringChunk | StringContent | Template | Identifier | TypeIdentifier | Number;
 
 /**
 * Context is used to track the source program throughout
@@ -225,6 +239,9 @@ export function parseStatement(context: Context, node: SyntaxNode): Statement {
   if (node.name === "DeclareStatement") {
     return parseDeclareStatement(context, node);
   }
+  if (node.name === "DeclareTypeStatement") {
+    return parseDeclareTypeStatement(context, node);
+  }
   if (node.name === "BlockStatement") {
     return parseBlockStatement(context, node);
   }
@@ -252,6 +269,18 @@ export function parseDeclareStatement(context: Context, node: SyntaxNode): Decla
   };
 }
 
+export function parseDeclareTypeStatement(context: Context, node: SyntaxNode): DeclareTypeStatement {
+  const typeIdentifier = context.getChild(node, "TypeIdentifier");
+  const optionalTypeExpression = node.getChild("TypeExpression");
+  const typeExpression = context.getChild(node, "TypeExpression");
+  return {
+    kind: "DeclareTypeStatement",
+    typeIdentifier: parseTypeIdentifier(context, typeIdentifier),
+    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : undefined,
+    typeExpression: parseTypeExpression(context, typeExpression),
+  };
+}
+
 export function parseBlockStatement(context: Context, node: SyntaxNode): BlockStatement {
   const statementList = node.getChildren("Statement");
   return {
@@ -263,11 +292,13 @@ export function parseBlockStatement(context: Context, node: SyntaxNode): BlockSt
 export function parseFunctionStatement(context: Context, node: SyntaxNode): FunctionStatement {
   const identifier = context.getChild(node, "Identifier");
   const paramList = node.getChildren("Param");
+  const optionalTypeExpression = node.getChild("TypeExpression");
   const blockStatement = context.getChild(node, "BlockStatement");
   return {
     kind: "FunctionStatement",
     identifier: parseIdentifier(context, identifier),
     paramList: paramList.map(paramList => parseParam(context, paramList)),
+    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : undefined,
     blockStatement: parseBlockStatement(context, blockStatement),
   };
 }
@@ -423,8 +454,8 @@ export function parseNegate(context: Context, node: SyntaxNode): Negate {
 }
 
 export function parseTypeExpression(context: Context, node: SyntaxNode): TypeExpression {
-  const identifier = node.getChild("Identifier");
-  if (identifier != null) return parseIdentifier(context, identifier);
+  const typeIdentifier = node.getChild("TypeIdentifier");
+  if (typeIdentifier != null) return parseTypeIdentifier(context, typeIdentifier);
   const number = node.getChild("Number");
   if (number != null) return parseNumber(context, number);
   const string = node.getChild("String");
@@ -499,6 +530,13 @@ export function parseTemplate(context: Context, node: SyntaxNode): Template {
 export function parseIdentifier(context: Context, node: SyntaxNode): Identifier {
   return {
     kind: "Identifier",
+    value: context.get(node),
+  };
+}
+
+export function parseTypeIdentifier(context: Context, node: SyntaxNode): TypeIdentifier {
+  return {
+    kind: "TypeIdentifier",
     value: context.get(node),
   };
 }

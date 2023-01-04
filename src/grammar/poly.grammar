@@ -11,6 +11,7 @@
 statement[@isGroup=Statement] {
   /** | */
   DeclareStatement |
+  DeclareTypeStatement |
   BlockStatement |
   ExpressionStatement |
   FunctionStatement |
@@ -18,8 +19,13 @@ statement[@isGroup=Statement] {
 }
 
 DeclareStatement {
-  /** let Identifier TypeExpression? = Expression */
-  makeStatement<keyword<"let"> Identifier optionalType "=" Expression>
+  /** (let|var) Identifier TypeExpression? = Expression */
+  makeStatement<(keyword<"let"> | keyword<"var">) Identifier optionalType "=" Expression>
+}
+
+DeclareTypeStatement {
+  /** type TypeIdentifier TypeExpression? = TypeExpression */
+  makeStatement<keyword<"type"> TypeIdentifier optionalType "=" TypeExpression>
 }
 
 BlockStatement {
@@ -28,8 +34,8 @@ BlockStatement {
 }
 
 FunctionStatement {
-  /** fn Identifier ( Param[] ) BlockStatement */
-  keyword<"fn"> Identifier "(" params ")" BlockStatement
+  /** fn Identifier ( Param[] ) TypeExpression? BlockStatement */
+  keyword<"fn"> Identifier "(" params ")" optionalReturnType BlockStatement
 }
 
 ReturnStatement {
@@ -112,7 +118,7 @@ Negate {
 // Types
 TypeExpression {
   /** | */
-  Identifier | Number | String | UnionType
+  TypeIdentifier | Number | String | UnionType
 }
 
 UnionType {
@@ -133,6 +139,10 @@ Arg {
 
 optionalType {
   (":" TypeExpression)?
+}
+
+optionalReturnType {
+  ("->" TypeExpression)?
 }
 
 optionalDefault {
@@ -182,6 +192,7 @@ keyword<content> { @specialize[@name={content}]<Identifier, content> }
 
 @tokens {
   Identifier { /** . */ "@"? @asciiLetter+ }
+  TypeIdentifier { /** . */ "@"? @asciiLetter+ }
   Number { /** . */ @digit+ }
   whitespace { @whitespace+ }
   char { ($[\u{20}\u{21}\u{23}-\u{5b}\u{5d}-\u{10ffff}] | "\\" esc)+ }
