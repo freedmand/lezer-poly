@@ -3,7 +3,7 @@
 // Note: special documentation comments are used to generate AST
 // forming code. See ../grammarConvert/grammarConvert.ts for details.
 
-@precedence { negative @right, times @left, plus @left, dictionary @cut }
+@precedence { unary @right, times @left, plus @left, comparison @left, equals @left, dictionary @cut }
 
 @top Program { /** Statement[] */ statement* }
 
@@ -12,7 +12,13 @@ statement[@isGroup=Statement] {
   /** | */
   DeclareStatement |
   DeclareTypeStatement |
+  AssignStatement |
+  PlusAssignStatement |
+  MinusAssignStatement |
+  TimesAssignStatement |
+  DivideAssignStatement |
   BlockStatement |
+  IfStatement |
   ExpressionStatement |
   FunctionStatement |
   ReturnStatement
@@ -28,6 +34,31 @@ DeclareTypeStatement {
   makeStatement<keyword<"type"> TypeIdentifier optionalType "=" TypeExpression>
 }
 
+AssignStatement {
+  /** Identifier = Expression */
+  makeAssignStatement<"=">
+}
+
+PlusAssignStatement {
+  /** Identifier += Expression */
+  makeAssignStatement<"+=">
+}
+
+MinusAssignStatement {
+  /** Identifier -= Expression */
+  makeAssignStatement<"-=">
+}
+
+TimesAssignStatement {
+  /** Identifier *= Expression */
+  makeAssignStatement<"*=">
+}
+
+DivideAssignStatement {
+  /** Identifier /= Expression */
+  makeAssignStatement<"/=">
+}
+
 BlockStatement {
   /** { Statement[] } */
   "{" statement* "}"
@@ -41,6 +72,11 @@ FunctionStatement {
 ReturnStatement {
   /** return Expression? */
   makeStatement<keyword<"return"> Expression?>
+}
+
+IfStatement {
+  /** if Expression BlockStatement */
+  keyword<"if"> Expression BlockStatement
 }
 
 ExpressionStatement {
@@ -87,7 +123,8 @@ GroupExpression {
 
 BinaryExpression {
   /** | */
-  PlusExpression | MinusExpression | TimesExpression | DivideExpression
+  PlusExpression | MinusExpression | TimesExpression | DivideExpression |
+  EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression
 }
 
 PlusExpression {
@@ -107,12 +144,42 @@ TimesExpression {
 
 DivideExpression {
   /** Expression / Expression */
-  Expression !times "/" Expression
+  Expression !times Divide Expression
+}
+
+EqualityExpression {
+  /** Expression == Expression */
+  Expression !equals "==" Expression
+}
+
+InequalityExpression {
+  /** Expression != Expression */
+  Expression !equals "!=" Expression
+}
+
+GreaterThanExpression {
+  /** Expression > Expression */
+  Expression !comparison ">" Expression
+}
+
+LessThanExpression {
+  /** Expression < Expression */
+  Expression !comparison "<" Expression
+}
+
+GreaterThanOrEqualExpression {
+  /** Expression >= Expression */
+  Expression !comparison ">=" Expression
+}
+
+LessThanOrEqualExpression {
+  /** Expression <= Expression */
+  Expression !comparison "<=" Expression
 }
 
 Negate {
   /** - Expression */
-  !negative "-" Expression
+  !unary "-" Expression
 }
 
 // Types
@@ -159,7 +226,7 @@ args {
 
 // Skip / strings
 @skip {
-  whitespace
+  whitespace | Comment | DocComment
 }
 
 @skip {} {
@@ -186,6 +253,7 @@ Template {
 
 // Utils
 makeStatement<content> { content ";" }
+makeAssignStatement<operator> { makeStatement<Identifier operator Expression> }
 commaSep1<item> { item ("," item)* }
 commaSep<item> { commaSep1<item>? }
 keyword<content> { @specialize[@name={content}]<Identifier, content> }
@@ -194,11 +262,19 @@ keyword<content> { @specialize[@name={content}]<Identifier, content> }
   Identifier { /** . */ "@"? @asciiLetter+ }
   TypeIdentifier { /** . */ "@"? @asciiLetter+ }
   Number { /** . */ @digit+ }
+  Divide { "/" }
+  Comment {
+    "//" ![\n]*
+  }
+  DocComment {
+    "///" ![\n]*
+  }
   whitespace { @whitespace+ }
   char { ($[\u{20}\u{21}\u{23}-\u{5b}\u{5d}-\u{10ffff}] | "\\" esc)+ }
   esc  { $["\\\/bfnrt] | "u" hex hex hex hex }
   hex  { $[0-9a-fA-F] }
   "+" "-" "*" "/" "[" "]" "{" "}" "\\["
+  @precedence { DocComment, Comment, Divide }
 }
 
 @external propSource polyHighlighting from "../grammar/propSource.js"

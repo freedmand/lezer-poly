@@ -8,8 +8,8 @@ export interface Program {
   statementList: Statement[];
 }
 
-export type Statement = DeclareStatement | DeclareTypeStatement | BlockStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
-export const statementTypes = ["DeclareStatement", "DeclareTypeStatement", "BlockStatement", "ExpressionStatement", "FunctionStatement", "ReturnStatement"]
+export type Statement = DeclareStatement | DeclareTypeStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | IfStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
+export const statementTypes = ["DeclareStatement", "DeclareTypeStatement", "AssignStatement", "PlusAssignStatement", "MinusAssignStatement", "TimesAssignStatement", "DivideAssignStatement", "BlockStatement", "IfStatement", "ExpressionStatement", "FunctionStatement", "ReturnStatement"]
 
 /** (let|var) Identifier TypeExpression? = Expression */
 export interface DeclareStatement {
@@ -25,6 +25,41 @@ export interface DeclareTypeStatement {
   typeIdentifier: TypeIdentifier;
   optionalTypeExpression?: TypeExpression;
   typeExpression: TypeExpression;
+}
+
+/** Identifier = Expression */
+export interface AssignStatement {
+  kind: "AssignStatement";
+  identifier: Identifier;
+  expression: Expression;
+}
+
+/** Identifier += Expression */
+export interface PlusAssignStatement {
+  kind: "PlusAssignStatement";
+  identifier: Identifier;
+  expression: Expression;
+}
+
+/** Identifier -= Expression */
+export interface MinusAssignStatement {
+  kind: "MinusAssignStatement";
+  identifier: Identifier;
+  expression: Expression;
+}
+
+/** Identifier *= Expression */
+export interface TimesAssignStatement {
+  kind: "TimesAssignStatement";
+  identifier: Identifier;
+  expression: Expression;
+}
+
+/** Identifier /= Expression */
+export interface DivideAssignStatement {
+  kind: "DivideAssignStatement";
+  identifier: Identifier;
+  expression: Expression;
 }
 
 /** { Statement[] } */
@@ -46,6 +81,13 @@ export interface FunctionStatement {
 export interface ReturnStatement {
   kind: "ReturnStatement";
   optionalExpression?: Expression;
+}
+
+/** if Expression BlockStatement */
+export interface IfStatement {
+  kind: "IfStatement";
+  expression: Expression;
+  blockStatement: BlockStatement;
 }
 
 /** Expression */
@@ -96,8 +138,8 @@ export interface GroupExpression {
   expression: Expression;
 }
 
-export type BinaryExpression = PlusExpression | MinusExpression | TimesExpression | DivideExpression;
-export const binaryExpressionTypes = ["PlusExpression", "MinusExpression", "TimesExpression", "DivideExpression"]
+export type BinaryExpression = PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression;
+export const binaryExpressionTypes = ["PlusExpression", "MinusExpression", "TimesExpression", "DivideExpression", "EqualityExpression", "InequalityExpression", "GreaterThanExpression", "LessThanExpression", "GreaterThanOrEqualExpression", "LessThanOrEqualExpression"]
 
 /** Expression + Expression */
 export interface PlusExpression {
@@ -123,6 +165,48 @@ export interface TimesExpression {
 /** Expression / Expression */
 export interface DivideExpression {
   kind: "DivideExpression";
+  expression1: Expression;
+  expression2: Expression;
+}
+
+/** Expression == Expression */
+export interface EqualityExpression {
+  kind: "EqualityExpression";
+  expression1: Expression;
+  expression2: Expression;
+}
+
+/** Expression != Expression */
+export interface InequalityExpression {
+  kind: "InequalityExpression";
+  expression1: Expression;
+  expression2: Expression;
+}
+
+/** Expression > Expression */
+export interface GreaterThanExpression {
+  kind: "GreaterThanExpression";
+  expression1: Expression;
+  expression2: Expression;
+}
+
+/** Expression < Expression */
+export interface LessThanExpression {
+  kind: "LessThanExpression";
+  expression1: Expression;
+  expression2: Expression;
+}
+
+/** Expression >= Expression */
+export interface GreaterThanOrEqualExpression {
+  kind: "GreaterThanOrEqualExpression";
+  expression1: Expression;
+  expression2: Expression;
+}
+
+/** Expression <= Expression */
+export interface LessThanOrEqualExpression {
+  kind: "LessThanOrEqualExpression";
   expression1: Expression;
   expression2: Expression;
 }
@@ -193,7 +277,7 @@ export interface Number {
   value: string;
 }
 
-export type AST = Program | Statement | DeclareStatement | DeclareTypeStatement | BlockStatement | FunctionStatement | ReturnStatement | ExpressionStatement | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | Negate | TypeExpression | UnionType | Param | Arg | String | StringChunk | StringContent | Template | Identifier | TypeIdentifier | Number;
+export type AST = Program | Statement | DeclareStatement | DeclareTypeStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | FunctionStatement | ReturnStatement | IfStatement | ExpressionStatement | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression | Negate | TypeExpression | UnionType | Param | Arg | String | StringChunk | StringContent | Template | Identifier | TypeIdentifier | Number;
 
 /**
 * Context is used to track the source program throughout
@@ -242,8 +326,26 @@ export function parseStatement(context: Context, node: SyntaxNode): Statement {
   if (node.name === "DeclareTypeStatement") {
     return parseDeclareTypeStatement(context, node);
   }
+  if (node.name === "AssignStatement") {
+    return parseAssignStatement(context, node);
+  }
+  if (node.name === "PlusAssignStatement") {
+    return parsePlusAssignStatement(context, node);
+  }
+  if (node.name === "MinusAssignStatement") {
+    return parseMinusAssignStatement(context, node);
+  }
+  if (node.name === "TimesAssignStatement") {
+    return parseTimesAssignStatement(context, node);
+  }
+  if (node.name === "DivideAssignStatement") {
+    return parseDivideAssignStatement(context, node);
+  }
   if (node.name === "BlockStatement") {
     return parseBlockStatement(context, node);
+  }
+  if (node.name === "IfStatement") {
+    return parseIfStatement(context, node);
   }
   if (node.name === "ExpressionStatement") {
     return parseExpressionStatement(context, node);
@@ -281,6 +383,56 @@ export function parseDeclareTypeStatement(context: Context, node: SyntaxNode): D
   };
 }
 
+export function parseAssignStatement(context: Context, node: SyntaxNode): AssignStatement {
+  const identifier = context.getChild(node, "Identifier");
+  const expression = context.getChild(node, "Expression");
+  return {
+    kind: "AssignStatement",
+    identifier: parseIdentifier(context, identifier),
+    expression: parseExpression(context, expression),
+  };
+}
+
+export function parsePlusAssignStatement(context: Context, node: SyntaxNode): PlusAssignStatement {
+  const identifier = context.getChild(node, "Identifier");
+  const expression = context.getChild(node, "Expression");
+  return {
+    kind: "PlusAssignStatement",
+    identifier: parseIdentifier(context, identifier),
+    expression: parseExpression(context, expression),
+  };
+}
+
+export function parseMinusAssignStatement(context: Context, node: SyntaxNode): MinusAssignStatement {
+  const identifier = context.getChild(node, "Identifier");
+  const expression = context.getChild(node, "Expression");
+  return {
+    kind: "MinusAssignStatement",
+    identifier: parseIdentifier(context, identifier),
+    expression: parseExpression(context, expression),
+  };
+}
+
+export function parseTimesAssignStatement(context: Context, node: SyntaxNode): TimesAssignStatement {
+  const identifier = context.getChild(node, "Identifier");
+  const expression = context.getChild(node, "Expression");
+  return {
+    kind: "TimesAssignStatement",
+    identifier: parseIdentifier(context, identifier),
+    expression: parseExpression(context, expression),
+  };
+}
+
+export function parseDivideAssignStatement(context: Context, node: SyntaxNode): DivideAssignStatement {
+  const identifier = context.getChild(node, "Identifier");
+  const expression = context.getChild(node, "Expression");
+  return {
+    kind: "DivideAssignStatement",
+    identifier: parseIdentifier(context, identifier),
+    expression: parseExpression(context, expression),
+  };
+}
+
 export function parseBlockStatement(context: Context, node: SyntaxNode): BlockStatement {
   const statementList = node.getChildren("Statement");
   return {
@@ -308,6 +460,16 @@ export function parseReturnStatement(context: Context, node: SyntaxNode): Return
   return {
     kind: "ReturnStatement",
     optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+  };
+}
+
+export function parseIfStatement(context: Context, node: SyntaxNode): IfStatement {
+  const expression = context.getChild(node, "Expression");
+  const blockStatement = context.getChild(node, "BlockStatement");
+  return {
+    kind: "IfStatement",
+    expression: parseExpression(context, expression),
+    blockStatement: parseBlockStatement(context, blockStatement),
   };
 }
 
@@ -406,6 +568,18 @@ export function parseBinaryExpression(context: Context, node: SyntaxNode): Binar
   if (timesExpression != null) return parseTimesExpression(context, timesExpression);
   const divideExpression = node.getChild("DivideExpression");
   if (divideExpression != null) return parseDivideExpression(context, divideExpression);
+  const equalityExpression = node.getChild("EqualityExpression");
+  if (equalityExpression != null) return parseEqualityExpression(context, equalityExpression);
+  const inequalityExpression = node.getChild("InequalityExpression");
+  if (inequalityExpression != null) return parseInequalityExpression(context, inequalityExpression);
+  const greaterThanExpression = node.getChild("GreaterThanExpression");
+  if (greaterThanExpression != null) return parseGreaterThanExpression(context, greaterThanExpression);
+  const lessThanExpression = node.getChild("LessThanExpression");
+  if (lessThanExpression != null) return parseLessThanExpression(context, lessThanExpression);
+  const greaterThanOrEqualExpression = node.getChild("GreaterThanOrEqualExpression");
+  if (greaterThanOrEqualExpression != null) return parseGreaterThanOrEqualExpression(context, greaterThanOrEqualExpression);
+  const lessThanOrEqualExpression = node.getChild("LessThanOrEqualExpression");
+  if (lessThanOrEqualExpression != null) return parseLessThanOrEqualExpression(context, lessThanOrEqualExpression);
   throw new Error(`Invalid: ${node.name} cannot be parsed as BinaryExpression`);
 }
 
@@ -440,6 +614,60 @@ export function parseDivideExpression(context: Context, node: SyntaxNode): Divid
   const [expression1, expression2] = node.getChildren("Expression");
   return {
     kind: "DivideExpression",
+    expression1: parseExpression(context, expression1),
+    expression2: parseExpression(context, expression2),
+  };
+}
+
+export function parseEqualityExpression(context: Context, node: SyntaxNode): EqualityExpression {
+  const [expression1, expression2] = node.getChildren("Expression");
+  return {
+    kind: "EqualityExpression",
+    expression1: parseExpression(context, expression1),
+    expression2: parseExpression(context, expression2),
+  };
+}
+
+export function parseInequalityExpression(context: Context, node: SyntaxNode): InequalityExpression {
+  const [expression1, expression2] = node.getChildren("Expression");
+  return {
+    kind: "InequalityExpression",
+    expression1: parseExpression(context, expression1),
+    expression2: parseExpression(context, expression2),
+  };
+}
+
+export function parseGreaterThanExpression(context: Context, node: SyntaxNode): GreaterThanExpression {
+  const [expression1, expression2] = node.getChildren("Expression");
+  return {
+    kind: "GreaterThanExpression",
+    expression1: parseExpression(context, expression1),
+    expression2: parseExpression(context, expression2),
+  };
+}
+
+export function parseLessThanExpression(context: Context, node: SyntaxNode): LessThanExpression {
+  const [expression1, expression2] = node.getChildren("Expression");
+  return {
+    kind: "LessThanExpression",
+    expression1: parseExpression(context, expression1),
+    expression2: parseExpression(context, expression2),
+  };
+}
+
+export function parseGreaterThanOrEqualExpression(context: Context, node: SyntaxNode): GreaterThanOrEqualExpression {
+  const [expression1, expression2] = node.getChildren("Expression");
+  return {
+    kind: "GreaterThanOrEqualExpression",
+    expression1: parseExpression(context, expression1),
+    expression2: parseExpression(context, expression2),
+  };
+}
+
+export function parseLessThanOrEqualExpression(context: Context, node: SyntaxNode): LessThanOrEqualExpression {
+  const [expression1, expression2] = node.getChildren("Expression");
+  return {
+    kind: "LessThanOrEqualExpression",
     expression1: parseExpression(context, expression1),
     expression2: parseExpression(context, expression2),
   };
