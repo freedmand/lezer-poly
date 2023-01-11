@@ -42,7 +42,8 @@ export const
   DivideAssignStatement = 51,
   BlockStatement = 52,
   IfStatement = 53,
-  ExpressionStatement = 55,
-  FunctionStatement = 56,
-  Param = 58,
-  ReturnStatement = 59
+  ForStatement = 55,
+  ExpressionStatement = 58,
+  FunctionStatement = 59,
+  Param = 61,
+  ReturnStatement = 62

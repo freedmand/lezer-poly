@@ -19,6 +19,7 @@ statement[@isGroup=Statement] {
   DivideAssignStatement |
   BlockStatement |
   IfStatement |
+  ForStatement |
   ExpressionStatement |
   FunctionStatement |
   ReturnStatement
@@ -77,6 +78,11 @@ ReturnStatement {
 IfStatement {
   /** if Expression BlockStatement */
   keyword<"if"> Expression BlockStatement
+}
+
+ForStatement {
+  /** for Expression in Expression BlockStatement */
+  keyword<"for"> Expression keyword<"in"> Expression BlockStatement
 }
 
 ExpressionStatement {

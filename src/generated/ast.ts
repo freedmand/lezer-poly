@@ -8,8 +8,8 @@ export interface Program {
   statementList: Statement[];
 }
 
-export type Statement = DeclareStatement | DeclareTypeStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | IfStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
-export const statementTypes = ["DeclareStatement", "DeclareTypeStatement", "AssignStatement", "PlusAssignStatement", "MinusAssignStatement", "TimesAssignStatement", "DivideAssignStatement", "BlockStatement", "IfStatement", "ExpressionStatement", "FunctionStatement", "ReturnStatement"]
+export type Statement = DeclareStatement | DeclareTypeStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | IfStatement | ForStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
+export const statementTypes = ["DeclareStatement", "DeclareTypeStatement", "AssignStatement", "PlusAssignStatement", "MinusAssignStatement", "TimesAssignStatement", "DivideAssignStatement", "BlockStatement", "IfStatement", "ForStatement", "ExpressionStatement", "FunctionStatement", "ReturnStatement"]
 
 /** (let|var) Identifier TypeExpression? = Expression */
 export interface DeclareStatement {
@@ -87,6 +87,14 @@ export interface ReturnStatement {
 export interface IfStatement {
   kind: "IfStatement";
   expression: Expression;
+  blockStatement: BlockStatement;
+}
+
+/** for Expression in Expression BlockStatement */
+export interface ForStatement {
+  kind: "ForStatement";
+  expression1: Expression;
+  expression2: Expression;
   blockStatement: BlockStatement;
 }
 
@@ -277,7 +285,7 @@ export interface Number {
   value: string;
 }
 
-export type AST = Program | Statement | DeclareStatement | DeclareTypeStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | FunctionStatement | ReturnStatement | IfStatement | ExpressionStatement | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression | Negate | TypeExpression | UnionType | Param | Arg | String | StringChunk | StringContent | Template | Identifier | TypeIdentifier | Number;
+export type AST = Program | Statement | DeclareStatement | DeclareTypeStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | FunctionStatement | ReturnStatement | IfStatement | ForStatement | ExpressionStatement | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression | Negate | TypeExpression | UnionType | Param | Arg | String | StringChunk | StringContent | Template | Identifier | TypeIdentifier | Number;
 
 /**
 * Context is used to track the source program throughout
@@ -346,6 +354,9 @@ export function parseStatement(context: Context, node: SyntaxNode): Statement {
   }
   if (node.name === "IfStatement") {
     return parseIfStatement(context, node);
+  }
+  if (node.name === "ForStatement") {
+    return parseForStatement(context, node);
   }
   if (node.name === "ExpressionStatement") {
     return parseExpressionStatement(context, node);
@@ -469,6 +480,17 @@ export function parseIfStatement(context: Context, node: SyntaxNode): IfStatemen
   return {
     kind: "IfStatement",
     expression: parseExpression(context, expression),
+    blockStatement: parseBlockStatement(context, blockStatement),
+  };
+}
+
+export function parseForStatement(context: Context, node: SyntaxNode): ForStatement {
+  const [expression1, expression2] = node.getChildren("Expression");
+  const blockStatement = context.getChild(node, "BlockStatement");
+  return {
+    kind: "ForStatement",
+    expression1: parseExpression(context, expression1),
+    expression2: parseExpression(context, expression2),
     blockStatement: parseBlockStatement(context, blockStatement),
   };
 }
