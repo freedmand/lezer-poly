@@ -3,7 +3,7 @@
 // Note: special documentation comments are used to generate AST
 // forming code. See ../grammarConvert/grammarConvert.ts for details.
 
-@precedence { unary @right, times @left, plus @left, comparison @left, equals @left, dictionary @cut }
+@precedence { unary @right, times @left, plus @left, comparison @left, equals @left, union @left, closure @right, dictionary @cut }
 
 @top Program { /** Statement[] */ statement* }
 
@@ -11,7 +11,9 @@
 statement[@isGroup=Statement] {
   /** | */
   DeclareStatement |
-  DeclareTypeStatement |
+  TypeDeclareStatement |
+  DeclareFunctionStatement |
+  DeclareTypeFunctionStatement |
   AssignStatement |
   PlusAssignStatement |
   MinusAssignStatement |
@@ -26,13 +28,38 @@ statement[@isGroup=Statement] {
 }
 
 DeclareStatement {
-  /** (let|var) Identifier TypeExpression? = Expression */
-  makeStatement<(keyword<"let"> | keyword<"var">) Identifier optionalType "=" Expression>
+  /** Declarator Identifier Expression? = Expression */
+  makeStatement<Declarator Identifier optionalType "=" Expression>
 }
 
-DeclareTypeStatement {
-  /** type TypeIdentifier TypeExpression? = TypeExpression */
-  makeStatement<keyword<"type"> TypeIdentifier optionalType "=" TypeExpression>
+TypeDeclareStatement {
+  /** type TypeIdentifier Expression? = Expression */
+  makeStatement<keyword<"type"> TypeIdentifier optionalType "=" Expression>
+}
+
+DeclareFunctionStatement {
+  /** Declarator Identifier ( Param[] ) Expression? ClosureOrBlockStatement */
+  Declarator Identifier "(" params ")" optionalReturnType ClosureOrBlockStatement
+}
+
+DeclareTypeFunctionStatement {
+  /** type TypeIdentifier ( Param[] ) Expression? ClosureOrBlockStatement */
+  keyword<"type"> TypeIdentifier "(" params ")" optionalReturnType ClosureOrBlockStatement
+}
+
+Declarator {
+  /** | */
+  LetDeclarator | VarDeclarator
+}
+
+LetDeclarator {
+  /** let */
+  keyword<"let">
+}
+
+VarDeclarator {
+  /** var */
+  keyword<"var">
 }
 
 AssignStatement {
@@ -65,9 +92,24 @@ BlockStatement {
   "{" statement* "}"
 }
 
+ClosureOrBlockStatement {
+  /** | */
+  ArrowExpressionStatement | BlockStatement
+}
+
+ClosureOrBlockExpression {
+  /** | */
+  ArrowExpression | BlockStatement
+}
+
 FunctionStatement {
-  /** fn Identifier ( Param[] ) TypeExpression? BlockStatement */
-  keyword<"fn"> Identifier "(" params ")" optionalReturnType BlockStatement
+  /** fn Identifier ( Param[] ) Expression? ClosureOrBlockStatement */
+  keyword<"fn"> Identifier "(" params ")" optionalReturnType ClosureOrBlockStatement
+}
+
+ClosureExpression {
+  /** ( Param[] ) Expression? ClosureOrBlockExpression */
+  "(" params ")" optionalReturnType ClosureOrBlockExpression
 }
 
 ReturnStatement {
@@ -90,11 +132,22 @@ ExpressionStatement {
   makeStatement<Expression>
 }
 
+ArrowExpressionStatement {
+  /** => Expression */
+  makeStatement<"=>" Expression>
+}
+
+ArrowExpression {
+  /** => Expression */
+  !closure "=>" Expression
+}
+
 // Expressions
 Expression {
   /** | */
   Identifier | Number | String | BinaryExpression | GroupExpression |
-  Negate | MemberExpression | CallExpression | ListExpression | DictionaryExpression
+  Negate | MemberExpression | CallExpression | ListExpression | DictionaryExpression |
+  ClosureExpression
 }
 
 ListExpression {
@@ -130,7 +183,8 @@ GroupExpression {
 BinaryExpression {
   /** | */
   PlusExpression | MinusExpression | TimesExpression | DivideExpression |
-  EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression
+  EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression |
+  UnionExpression
 }
 
 PlusExpression {
@@ -183,26 +237,45 @@ LessThanOrEqualExpression {
   Expression !comparison "<=" Expression
 }
 
+UnionExpression {
+  /** Expression | Expression */
+  Expression !union "|" Expression
+}
+
 Negate {
   /** - Expression */
   !unary "-" Expression
 }
 
-// Types
-TypeExpression {
-  /** | */
-  TypeIdentifier | Number | String | UnionType
-}
-
-UnionType {
-  /** TypeExpression | TypeExpression */
-  (TypeExpression !plus "|" TypeExpression)
-}
-
 // Miscellaneous
 Param {
-  /** Identifier TypeExpression? Expression? */
-  Identifier optionalType optionalDefault
+  /** | */
+  TypeParam | ValueParam
+}
+
+TypeParam {
+  /** type TypeIdentifier */
+  keyword<"type"> TypeIdentifier
+}
+
+ValueParam {
+  /** ParamIdentifier Expression? Expression? */
+  ParamIdentifier optionalType optionalDefault
+}
+
+ParamIdentifier {
+  /** | */
+  ParamValueIdentifierToken | ParamTypeIdentifierToken
+}
+
+ParamValueIdentifierToken {
+  /** ValueIdentifier */
+  ValueIdentifier ~closure
+}
+
+ParamTypeIdentifierToken {
+  /** TypeIdentifier */
+  TypeIdentifier ~closure
 }
 
 Arg {
@@ -210,12 +283,27 @@ Arg {
   (Identifier "=")? Expression
 }
 
+Identifier {
+  /** | */
+  ValueIdentifierToken | TypeIdentifierToken
+}
+
+ValueIdentifierToken {
+  /** ValueIdentifier */
+  ValueIdentifier ~closure
+}
+
+TypeIdentifierToken {
+  /** TypeIdentifier */
+  TypeIdentifier ~closure
+}
+
 optionalType {
-  (":" TypeExpression)?
+  (":" Expression)?
 }
 
 optionalReturnType {
-  ("->" TypeExpression)?
+  ("->" Expression)?
 }
 
 optionalDefault {
@@ -262,11 +350,11 @@ makeStatement<content> { content ";" }
 makeAssignStatement<operator> { makeStatement<Identifier operator Expression> }
 commaSep1<item> { item ("," item)* }
 commaSep<item> { commaSep1<item>? }
-keyword<content> { @specialize[@name={content}]<Identifier, content> }
+keyword<content> { @specialize[@name={content}]<ValueIdentifier, content> }
 
 @tokens {
-  Identifier { /** . */ "@"? @asciiLetter+ }
-  TypeIdentifier { /** . */ "@"? @asciiLetter+ }
+  ValueIdentifier { /** . */ "@"? @asciiLowercase @asciiLetter* }
+  TypeIdentifier { /** . */ @asciiUppercase @asciiLetter* }
   Number { /** . */ @digit+ }
   Divide { "/" }
   Comment {

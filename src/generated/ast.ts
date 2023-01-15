@@ -8,23 +8,56 @@ export interface Program {
   statementList: Statement[];
 }
 
-export type Statement = DeclareStatement | DeclareTypeStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | IfStatement | ForStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
-export const statementTypes = ["DeclareStatement", "DeclareTypeStatement", "AssignStatement", "PlusAssignStatement", "MinusAssignStatement", "TimesAssignStatement", "DivideAssignStatement", "BlockStatement", "IfStatement", "ForStatement", "ExpressionStatement", "FunctionStatement", "ReturnStatement"]
+export type Statement = DeclareStatement | TypeDeclareStatement | DeclareFunctionStatement | DeclareTypeFunctionStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | IfStatement | ForStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
+export const statementTypes = ["DeclareStatement", "TypeDeclareStatement", "DeclareFunctionStatement", "DeclareTypeFunctionStatement", "AssignStatement", "PlusAssignStatement", "MinusAssignStatement", "TimesAssignStatement", "DivideAssignStatement", "BlockStatement", "IfStatement", "ForStatement", "ExpressionStatement", "FunctionStatement", "ReturnStatement"]
 
-/** (let|var) Identifier TypeExpression? = Expression */
+/** Declarator Identifier Expression? = Expression */
 export interface DeclareStatement {
   kind: "DeclareStatement";
+  declarator: Declarator;
   identifier: Identifier;
-  optionalTypeExpression?: TypeExpression;
+  optionalExpression?: Expression;
   expression: Expression;
 }
 
-/** type TypeIdentifier TypeExpression? = TypeExpression */
-export interface DeclareTypeStatement {
-  kind: "DeclareTypeStatement";
+/** type TypeIdentifier Expression? = Expression */
+export interface TypeDeclareStatement {
+  kind: "TypeDeclareStatement";
   typeIdentifier: TypeIdentifier;
-  optionalTypeExpression?: TypeExpression;
-  typeExpression: TypeExpression;
+  optionalExpression?: Expression;
+  expression: Expression;
+}
+
+/** Declarator Identifier ( Param[] ) Expression? ClosureOrBlockStatement */
+export interface DeclareFunctionStatement {
+  kind: "DeclareFunctionStatement";
+  declarator: Declarator;
+  identifier: Identifier;
+  paramList: Param[];
+  optionalExpression?: Expression;
+  closureOrBlockStatement: ClosureOrBlockStatement;
+}
+
+/** type TypeIdentifier ( Param[] ) Expression? ClosureOrBlockStatement */
+export interface DeclareTypeFunctionStatement {
+  kind: "DeclareTypeFunctionStatement";
+  typeIdentifier: TypeIdentifier;
+  paramList: Param[];
+  optionalExpression?: Expression;
+  closureOrBlockStatement: ClosureOrBlockStatement;
+}
+
+export type Declarator = LetDeclarator | VarDeclarator;
+export const declaratorTypes = ["LetDeclarator", "VarDeclarator"]
+
+/** let */
+export interface LetDeclarator {
+  kind: "LetDeclarator";
+}
+
+/** var */
+export interface VarDeclarator {
+  kind: "VarDeclarator";
 }
 
 /** Identifier = Expression */
@@ -68,13 +101,27 @@ export interface BlockStatement {
   statementList: Statement[];
 }
 
-/** fn Identifier ( Param[] ) TypeExpression? BlockStatement */
+export type ClosureOrBlockStatement = ArrowExpressionStatement | BlockStatement;
+export const closureOrBlockStatementTypes = ["ArrowExpressionStatement", "BlockStatement"]
+
+export type ClosureOrBlockExpression = ArrowExpression | BlockStatement;
+export const closureOrBlockExpressionTypes = ["ArrowExpression", "BlockStatement"]
+
+/** fn Identifier ( Param[] ) Expression? ClosureOrBlockStatement */
 export interface FunctionStatement {
   kind: "FunctionStatement";
   identifier: Identifier;
   paramList: Param[];
-  optionalTypeExpression?: TypeExpression;
-  blockStatement: BlockStatement;
+  optionalExpression?: Expression;
+  closureOrBlockStatement: ClosureOrBlockStatement;
+}
+
+/** ( Param[] ) Expression? ClosureOrBlockExpression */
+export interface ClosureExpression {
+  kind: "ClosureExpression";
+  paramList: Param[];
+  optionalExpression?: Expression;
+  closureOrBlockExpression: ClosureOrBlockExpression;
 }
 
 /** return Expression? */
@@ -104,8 +151,20 @@ export interface ExpressionStatement {
   expression: Expression;
 }
 
-export type Expression = Identifier | Number | String | BinaryExpression | GroupExpression | Negate | MemberExpression | CallExpression | ListExpression | DictionaryExpression;
-export const expressionTypes = ["Identifier", "Number", "String", "BinaryExpression", "GroupExpression", "Negate", "MemberExpression", "CallExpression", "ListExpression", "DictionaryExpression"]
+/** => Expression */
+export interface ArrowExpressionStatement {
+  kind: "ArrowExpressionStatement";
+  expression: Expression;
+}
+
+/** => Expression */
+export interface ArrowExpression {
+  kind: "ArrowExpression";
+  expression: Expression;
+}
+
+export type Expression = Identifier | Number | String | BinaryExpression | GroupExpression | Negate | MemberExpression | CallExpression | ListExpression | DictionaryExpression | ClosureExpression;
+export const expressionTypes = ["Identifier", "Number", "String", "BinaryExpression", "GroupExpression", "Negate", "MemberExpression", "CallExpression", "ListExpression", "DictionaryExpression", "ClosureExpression"]
 
 /** [ Expression[] ] */
 export interface ListExpression {
@@ -146,8 +205,8 @@ export interface GroupExpression {
   expression: Expression;
 }
 
-export type BinaryExpression = PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression;
-export const binaryExpressionTypes = ["PlusExpression", "MinusExpression", "TimesExpression", "DivideExpression", "EqualityExpression", "InequalityExpression", "GreaterThanExpression", "LessThanExpression", "GreaterThanOrEqualExpression", "LessThanOrEqualExpression"]
+export type BinaryExpression = PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression | UnionExpression;
+export const binaryExpressionTypes = ["PlusExpression", "MinusExpression", "TimesExpression", "DivideExpression", "EqualityExpression", "InequalityExpression", "GreaterThanExpression", "LessThanExpression", "GreaterThanOrEqualExpression", "LessThanOrEqualExpression", "UnionExpression"]
 
 /** Expression + Expression */
 export interface PlusExpression {
@@ -219,28 +278,49 @@ export interface LessThanOrEqualExpression {
   expression2: Expression;
 }
 
+/** Expression | Expression */
+export interface UnionExpression {
+  kind: "UnionExpression";
+  expression1: Expression;
+  expression2: Expression;
+}
+
 /** - Expression */
 export interface Negate {
   kind: "Negate";
   expression: Expression;
 }
 
-export type TypeExpression = TypeIdentifier | Number | String | UnionType;
-export const typeExpressionTypes = ["TypeIdentifier", "Number", "String", "UnionType"]
+export type Param = TypeParam | ValueParam;
+export const paramTypes = ["TypeParam", "ValueParam"]
 
-/** TypeExpression | TypeExpression */
-export interface UnionType {
-  kind: "UnionType";
-  typeExpression1: TypeExpression;
-  typeExpression2: TypeExpression;
+/** type TypeIdentifier */
+export interface TypeParam {
+  kind: "TypeParam";
+  typeIdentifier: TypeIdentifier;
 }
 
-/** Identifier TypeExpression? Expression? */
-export interface Param {
-  kind: "Param";
-  identifier: Identifier;
-  optionalTypeExpression?: TypeExpression;
-  optionalExpression?: Expression;
+/** ParamIdentifier Expression? Expression? */
+export interface ValueParam {
+  kind: "ValueParam";
+  paramIdentifier: ParamIdentifier;
+  optionalExpression1?: Expression;
+  optionalExpression2?: Expression;
+}
+
+export type ParamIdentifier = ParamValueIdentifierToken | ParamTypeIdentifierToken;
+export const paramIdentifierTypes = ["ParamValueIdentifierToken", "ParamTypeIdentifierToken"]
+
+/** ValueIdentifier */
+export interface ParamValueIdentifierToken {
+  kind: "ParamValueIdentifierToken";
+  valueIdentifier: ValueIdentifier;
+}
+
+/** TypeIdentifier */
+export interface ParamTypeIdentifierToken {
+  kind: "ParamTypeIdentifierToken";
+  typeIdentifier: TypeIdentifier;
 }
 
 /** Identifier? =? Expression */
@@ -248,6 +328,21 @@ export interface Arg {
   kind: "Arg";
   optionalIdentifier?: Identifier;
   expression: Expression;
+}
+
+export type Identifier = ValueIdentifierToken | TypeIdentifierToken;
+export const identifierTypes = ["ValueIdentifierToken", "TypeIdentifierToken"]
+
+/** ValueIdentifier */
+export interface ValueIdentifierToken {
+  kind: "ValueIdentifierToken";
+  valueIdentifier: ValueIdentifier;
+}
+
+/** TypeIdentifier */
+export interface TypeIdentifierToken {
+  kind: "TypeIdentifierToken";
+  typeIdentifier: TypeIdentifier;
 }
 
 /** " StringChunk[] " */
@@ -270,8 +365,8 @@ export interface Template {
   expression: Expression;
 }
 
-export interface Identifier {
-  kind: "Identifier";
+export interface ValueIdentifier {
+  kind: "ValueIdentifier";
   value: string;
 }
 
@@ -285,7 +380,7 @@ export interface Number {
   value: string;
 }
 
-export type AST = Program | Statement | DeclareStatement | DeclareTypeStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | FunctionStatement | ReturnStatement | IfStatement | ForStatement | ExpressionStatement | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression | Negate | TypeExpression | UnionType | Param | Arg | String | StringChunk | StringContent | Template | Identifier | TypeIdentifier | Number;
+export type AST = Program | Statement | DeclareStatement | TypeDeclareStatement | DeclareFunctionStatement | DeclareTypeFunctionStatement | Declarator | LetDeclarator | VarDeclarator | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | ClosureOrBlockStatement | ClosureOrBlockExpression | FunctionStatement | ClosureExpression | ReturnStatement | IfStatement | ForStatement | ExpressionStatement | ArrowExpressionStatement | ArrowExpression | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression | UnionExpression | Negate | Param | TypeParam | ValueParam | ParamIdentifier | ParamValueIdentifierToken | ParamTypeIdentifierToken | Arg | Identifier | ValueIdentifierToken | TypeIdentifierToken | String | StringChunk | StringContent | Template | ValueIdentifier | TypeIdentifier | Number;
 
 /**
 * Context is used to track the source program throughout
@@ -331,8 +426,14 @@ export function parseStatement(context: Context, node: SyntaxNode): Statement {
   if (node.name === "DeclareStatement") {
     return parseDeclareStatement(context, node);
   }
-  if (node.name === "DeclareTypeStatement") {
-    return parseDeclareTypeStatement(context, node);
+  if (node.name === "TypeDeclareStatement") {
+    return parseTypeDeclareStatement(context, node);
+  }
+  if (node.name === "DeclareFunctionStatement") {
+    return parseDeclareFunctionStatement(context, node);
+  }
+  if (node.name === "DeclareTypeFunctionStatement") {
+    return parseDeclareTypeFunctionStatement(context, node);
   }
   if (node.name === "AssignStatement") {
     return parseAssignStatement(context, node);
@@ -371,26 +472,78 @@ export function parseStatement(context: Context, node: SyntaxNode): Statement {
 }
 
 export function parseDeclareStatement(context: Context, node: SyntaxNode): DeclareStatement {
+  const declarator = context.getChild(node, "Declarator");
   const identifier = context.getChild(node, "Identifier");
-  const optionalTypeExpression = node.getChild("TypeExpression");
+  const optionalExpression = node.getChild("Expression");
   const expression = context.getChild(node, "Expression");
   return {
     kind: "DeclareStatement",
+    declarator: parseDeclarator(context, declarator),
     identifier: parseIdentifier(context, identifier),
-    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : undefined,
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
     expression: parseExpression(context, expression),
   };
 }
 
-export function parseDeclareTypeStatement(context: Context, node: SyntaxNode): DeclareTypeStatement {
+export function parseTypeDeclareStatement(context: Context, node: SyntaxNode): TypeDeclareStatement {
   const typeIdentifier = context.getChild(node, "TypeIdentifier");
-  const optionalTypeExpression = node.getChild("TypeExpression");
-  const typeExpression = context.getChild(node, "TypeExpression");
+  const optionalExpression = node.getChild("Expression");
+  const expression = context.getChild(node, "Expression");
   return {
-    kind: "DeclareTypeStatement",
+    kind: "TypeDeclareStatement",
     typeIdentifier: parseTypeIdentifier(context, typeIdentifier),
-    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : undefined,
-    typeExpression: parseTypeExpression(context, typeExpression),
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+    expression: parseExpression(context, expression),
+  };
+}
+
+export function parseDeclareFunctionStatement(context: Context, node: SyntaxNode): DeclareFunctionStatement {
+  const declarator = context.getChild(node, "Declarator");
+  const identifier = context.getChild(node, "Identifier");
+  const paramList = node.getChildren("Param");
+  const optionalExpression = node.getChild("Expression");
+  const closureOrBlockStatement = context.getChild(node, "ClosureOrBlockStatement");
+  return {
+    kind: "DeclareFunctionStatement",
+    declarator: parseDeclarator(context, declarator),
+    identifier: parseIdentifier(context, identifier),
+    paramList: paramList.map(paramList => parseParam(context, paramList)),
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+    closureOrBlockStatement: parseClosureOrBlockStatement(context, closureOrBlockStatement),
+  };
+}
+
+export function parseDeclareTypeFunctionStatement(context: Context, node: SyntaxNode): DeclareTypeFunctionStatement {
+  const typeIdentifier = context.getChild(node, "TypeIdentifier");
+  const paramList = node.getChildren("Param");
+  const optionalExpression = node.getChild("Expression");
+  const closureOrBlockStatement = context.getChild(node, "ClosureOrBlockStatement");
+  return {
+    kind: "DeclareTypeFunctionStatement",
+    typeIdentifier: parseTypeIdentifier(context, typeIdentifier),
+    paramList: paramList.map(paramList => parseParam(context, paramList)),
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+    closureOrBlockStatement: parseClosureOrBlockStatement(context, closureOrBlockStatement),
+  };
+}
+
+export function parseDeclarator(context: Context, node: SyntaxNode): Declarator {
+  const letDeclarator = node.getChild("LetDeclarator");
+  if (letDeclarator != null) return parseLetDeclarator(context, letDeclarator);
+  const varDeclarator = node.getChild("VarDeclarator");
+  if (varDeclarator != null) return parseVarDeclarator(context, varDeclarator);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as Declarator`);
+}
+
+export function parseLetDeclarator(context: Context, node: SyntaxNode): LetDeclarator {
+  return {
+    kind: "LetDeclarator",
+  };
+}
+
+export function parseVarDeclarator(context: Context, node: SyntaxNode): VarDeclarator {
+  return {
+    kind: "VarDeclarator",
   };
 }
 
@@ -452,17 +605,45 @@ export function parseBlockStatement(context: Context, node: SyntaxNode): BlockSt
   };
 }
 
+export function parseClosureOrBlockStatement(context: Context, node: SyntaxNode): ClosureOrBlockStatement {
+  const arrowExpressionStatement = node.getChild("ArrowExpressionStatement");
+  if (arrowExpressionStatement != null) return parseArrowExpressionStatement(context, arrowExpressionStatement);
+  const blockStatement = node.getChild("BlockStatement");
+  if (blockStatement != null) return parseBlockStatement(context, blockStatement);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as ClosureOrBlockStatement`);
+}
+
+export function parseClosureOrBlockExpression(context: Context, node: SyntaxNode): ClosureOrBlockExpression {
+  const arrowExpression = node.getChild("ArrowExpression");
+  if (arrowExpression != null) return parseArrowExpression(context, arrowExpression);
+  const blockStatement = node.getChild("BlockStatement");
+  if (blockStatement != null) return parseBlockStatement(context, blockStatement);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as ClosureOrBlockExpression`);
+}
+
 export function parseFunctionStatement(context: Context, node: SyntaxNode): FunctionStatement {
   const identifier = context.getChild(node, "Identifier");
   const paramList = node.getChildren("Param");
-  const optionalTypeExpression = node.getChild("TypeExpression");
-  const blockStatement = context.getChild(node, "BlockStatement");
+  const optionalExpression = node.getChild("Expression");
+  const closureOrBlockStatement = context.getChild(node, "ClosureOrBlockStatement");
   return {
     kind: "FunctionStatement",
     identifier: parseIdentifier(context, identifier),
     paramList: paramList.map(paramList => parseParam(context, paramList)),
-    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : undefined,
-    blockStatement: parseBlockStatement(context, blockStatement),
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+    closureOrBlockStatement: parseClosureOrBlockStatement(context, closureOrBlockStatement),
+  };
+}
+
+export function parseClosureExpression(context: Context, node: SyntaxNode): ClosureExpression {
+  const paramList = node.getChildren("Param");
+  const optionalExpression = node.getChild("Expression");
+  const closureOrBlockExpression = context.getChild(node, "ClosureOrBlockExpression");
+  return {
+    kind: "ClosureExpression",
+    paramList: paramList.map(paramList => parseParam(context, paramList)),
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+    closureOrBlockExpression: parseClosureOrBlockExpression(context, closureOrBlockExpression),
   };
 }
 
@@ -503,6 +684,22 @@ export function parseExpressionStatement(context: Context, node: SyntaxNode): Ex
   };
 }
 
+export function parseArrowExpressionStatement(context: Context, node: SyntaxNode): ArrowExpressionStatement {
+  const expression = context.getChild(node, "Expression");
+  return {
+    kind: "ArrowExpressionStatement",
+    expression: parseExpression(context, expression),
+  };
+}
+
+export function parseArrowExpression(context: Context, node: SyntaxNode): ArrowExpression {
+  const expression = context.getChild(node, "Expression");
+  return {
+    kind: "ArrowExpression",
+    expression: parseExpression(context, expression),
+  };
+}
+
 export function parseExpression(context: Context, node: SyntaxNode): Expression {
   const identifier = node.getChild("Identifier");
   if (identifier != null) return parseIdentifier(context, identifier);
@@ -524,6 +721,8 @@ export function parseExpression(context: Context, node: SyntaxNode): Expression 
   if (listExpression != null) return parseListExpression(context, listExpression);
   const dictionaryExpression = node.getChild("DictionaryExpression");
   if (dictionaryExpression != null) return parseDictionaryExpression(context, dictionaryExpression);
+  const closureExpression = node.getChild("ClosureExpression");
+  if (closureExpression != null) return parseClosureExpression(context, closureExpression);
   throw new Error(`Invalid: ${node.name} cannot be parsed as Expression`);
 }
 
@@ -602,6 +801,8 @@ export function parseBinaryExpression(context: Context, node: SyntaxNode): Binar
   if (greaterThanOrEqualExpression != null) return parseGreaterThanOrEqualExpression(context, greaterThanOrEqualExpression);
   const lessThanOrEqualExpression = node.getChild("LessThanOrEqualExpression");
   if (lessThanOrEqualExpression != null) return parseLessThanOrEqualExpression(context, lessThanOrEqualExpression);
+  const unionExpression = node.getChild("UnionExpression");
+  if (unionExpression != null) return parseUnionExpression(context, unionExpression);
   throw new Error(`Invalid: ${node.name} cannot be parsed as BinaryExpression`);
 }
 
@@ -695,6 +896,15 @@ export function parseLessThanOrEqualExpression(context: Context, node: SyntaxNod
   };
 }
 
+export function parseUnionExpression(context: Context, node: SyntaxNode): UnionExpression {
+  const [expression1, expression2] = node.getChildren("Expression");
+  return {
+    kind: "UnionExpression",
+    expression1: parseExpression(context, expression1),
+    expression2: parseExpression(context, expression2),
+  };
+}
+
 export function parseNegate(context: Context, node: SyntaxNode): Negate {
   const expression = context.getChild(node, "Expression");
   return {
@@ -703,36 +913,51 @@ export function parseNegate(context: Context, node: SyntaxNode): Negate {
   };
 }
 
-export function parseTypeExpression(context: Context, node: SyntaxNode): TypeExpression {
-  const typeIdentifier = node.getChild("TypeIdentifier");
-  if (typeIdentifier != null) return parseTypeIdentifier(context, typeIdentifier);
-  const number = node.getChild("Number");
-  if (number != null) return parseNumber(context, number);
-  const string = node.getChild("String");
-  if (string != null) return parseString(context, string);
-  const unionType = node.getChild("UnionType");
-  if (unionType != null) return parseUnionType(context, unionType);
-  throw new Error(`Invalid: ${node.name} cannot be parsed as TypeExpression`);
+export function parseParam(context: Context, node: SyntaxNode): Param {
+  const typeParam = node.getChild("TypeParam");
+  if (typeParam != null) return parseTypeParam(context, typeParam);
+  const valueParam = node.getChild("ValueParam");
+  if (valueParam != null) return parseValueParam(context, valueParam);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as Param`);
 }
 
-export function parseUnionType(context: Context, node: SyntaxNode): UnionType {
-  const [typeExpression1, typeExpression2] = node.getChildren("TypeExpression");
+export function parseTypeParam(context: Context, node: SyntaxNode): TypeParam {
+  const typeIdentifier = context.getChild(node, "TypeIdentifier");
   return {
-    kind: "UnionType",
-    typeExpression1: parseTypeExpression(context, typeExpression1),
-    typeExpression2: parseTypeExpression(context, typeExpression2),
+    kind: "TypeParam",
+    typeIdentifier: parseTypeIdentifier(context, typeIdentifier),
   };
 }
 
-export function parseParam(context: Context, node: SyntaxNode): Param {
-  const identifier = context.getChild(node, "Identifier");
-  const optionalTypeExpression = node.getChild("TypeExpression");
-  const optionalExpression = node.getChild("Expression");
+export function parseValueParam(context: Context, node: SyntaxNode): ValueParam {
+  const paramIdentifier = context.getChild(node, "ParamIdentifier");
   return {
-    kind: "Param",
-    identifier: parseIdentifier(context, identifier),
-    optionalTypeExpression: optionalTypeExpression != null ? parseTypeExpression(context, optionalTypeExpression) : undefined,
-    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+    kind: "ValueParam",
+    paramIdentifier: parseParamIdentifier(context, paramIdentifier),
+  };
+}
+
+export function parseParamIdentifier(context: Context, node: SyntaxNode): ParamIdentifier {
+  const paramValueIdentifierToken = node.getChild("ParamValueIdentifierToken");
+  if (paramValueIdentifierToken != null) return parseParamValueIdentifierToken(context, paramValueIdentifierToken);
+  const paramTypeIdentifierToken = node.getChild("ParamTypeIdentifierToken");
+  if (paramTypeIdentifierToken != null) return parseParamTypeIdentifierToken(context, paramTypeIdentifierToken);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as ParamIdentifier`);
+}
+
+export function parseParamValueIdentifierToken(context: Context, node: SyntaxNode): ParamValueIdentifierToken {
+  const valueIdentifier = context.getChild(node, "ValueIdentifier");
+  return {
+    kind: "ParamValueIdentifierToken",
+    valueIdentifier: parseValueIdentifier(context, valueIdentifier),
+  };
+}
+
+export function parseParamTypeIdentifierToken(context: Context, node: SyntaxNode): ParamTypeIdentifierToken {
+  const typeIdentifier = context.getChild(node, "TypeIdentifier");
+  return {
+    kind: "ParamTypeIdentifierToken",
+    typeIdentifier: parseTypeIdentifier(context, typeIdentifier),
   };
 }
 
@@ -743,6 +968,30 @@ export function parseArg(context: Context, node: SyntaxNode): Arg {
     kind: "Arg",
     optionalIdentifier: optionalIdentifier != null ? parseIdentifier(context, optionalIdentifier) : undefined,
     expression: parseExpression(context, expression),
+  };
+}
+
+export function parseIdentifier(context: Context, node: SyntaxNode): Identifier {
+  const valueIdentifierToken = node.getChild("ValueIdentifierToken");
+  if (valueIdentifierToken != null) return parseValueIdentifierToken(context, valueIdentifierToken);
+  const typeIdentifierToken = node.getChild("TypeIdentifierToken");
+  if (typeIdentifierToken != null) return parseTypeIdentifierToken(context, typeIdentifierToken);
+  throw new Error(`Invalid: ${node.name} cannot be parsed as Identifier`);
+}
+
+export function parseValueIdentifierToken(context: Context, node: SyntaxNode): ValueIdentifierToken {
+  const valueIdentifier = context.getChild(node, "ValueIdentifier");
+  return {
+    kind: "ValueIdentifierToken",
+    valueIdentifier: parseValueIdentifier(context, valueIdentifier),
+  };
+}
+
+export function parseTypeIdentifierToken(context: Context, node: SyntaxNode): TypeIdentifierToken {
+  const typeIdentifier = context.getChild(node, "TypeIdentifier");
+  return {
+    kind: "TypeIdentifierToken",
+    typeIdentifier: parseTypeIdentifier(context, typeIdentifier),
   };
 }
 
@@ -777,9 +1026,9 @@ export function parseTemplate(context: Context, node: SyntaxNode): Template {
   };
 }
 
-export function parseIdentifier(context: Context, node: SyntaxNode): Identifier {
+export function parseValueIdentifier(context: Context, node: SyntaxNode): ValueIdentifier {
   return {
-    kind: "Identifier",
+    kind: "ValueIdentifier",
     value: context.get(node),
   };
 }
