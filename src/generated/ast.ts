@@ -8,23 +8,23 @@ export interface Program {
   statementList: Statement[];
 }
 
-export type Statement = DeclareStatement | TypeDeclareStatement | DeclareFunctionStatement | DeclareTypeFunctionStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | IfStatement | ForStatement | ExpressionStatement | FunctionStatement | ReturnStatement;
-export const statementTypes = ["DeclareStatement", "TypeDeclareStatement", "DeclareFunctionStatement", "DeclareTypeFunctionStatement", "AssignStatement", "PlusAssignStatement", "MinusAssignStatement", "TimesAssignStatement", "DivideAssignStatement", "BlockStatement", "IfStatement", "ForStatement", "ExpressionStatement", "FunctionStatement", "ReturnStatement"]
+export type Statement = DeclareStatement | TypeDeclareStatement | DeclareFunctionStatement | DeclareTypeFunctionStatement | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | IfStatement | ForStatement | ExpressionStatement | FunctionStatement | OperatorFunctionStatement | ClassStatement | ReturnStatement;
+export const statementTypes = ["DeclareStatement", "TypeDeclareStatement", "DeclareFunctionStatement", "DeclareTypeFunctionStatement", "AssignStatement", "PlusAssignStatement", "MinusAssignStatement", "TimesAssignStatement", "DivideAssignStatement", "BlockStatement", "IfStatement", "ForStatement", "ExpressionStatement", "FunctionStatement", "OperatorFunctionStatement", "ClassStatement", "ReturnStatement"]
 
-/** Declarator Identifier Expression? = Expression */
+/** Declarator Identifier OptionalType = Expression */
 export interface DeclareStatement {
   kind: "DeclareStatement";
   declarator: Declarator;
   identifier: Identifier;
-  optionalExpression?: Expression;
+  optionalType: OptionalType;
   expression: Expression;
 }
 
-/** type TypeIdentifier Expression? = Expression */
+/** type TypeIdentifier OptionalType = Expression */
 export interface TypeDeclareStatement {
   kind: "TypeDeclareStatement";
   typeIdentifier: TypeIdentifier;
-  optionalExpression?: Expression;
+  optionalType: OptionalType;
   expression: Expression;
 }
 
@@ -114,6 +114,28 @@ export interface FunctionStatement {
   paramList: Param[];
   optionalExpression?: Expression;
   closureOrBlockStatement: ClosureOrBlockStatement;
+}
+
+/** operator OperatorToken ( Param[] ) Expression? ClosureOrBlockStatement */
+export interface OperatorFunctionStatement {
+  kind: "OperatorFunctionStatement";
+  operatorToken: OperatorToken;
+  paramList: Param[];
+  optionalExpression?: Expression;
+  closureOrBlockStatement: ClosureOrBlockStatement;
+}
+
+export interface OperatorToken {
+  kind: "OperatorToken";
+  value: string;
+}
+
+/** class Identifier ( Expression ) BlockStatement */
+export interface ClassStatement {
+  kind: "ClassStatement";
+  identifier: Identifier;
+  expression: Expression;
+  blockStatement: BlockStatement;
 }
 
 /** ( Param[] ) Expression? ClosureOrBlockExpression */
@@ -300,12 +322,12 @@ export interface TypeParam {
   typeIdentifier: TypeIdentifier;
 }
 
-/** ParamIdentifier Expression? Expression? */
+/** ParamIdentifier OptionalType Expression? */
 export interface ValueParam {
   kind: "ValueParam";
   paramIdentifier: ParamIdentifier;
-  optionalExpression1?: Expression;
-  optionalExpression2?: Expression;
+  optionalType: OptionalType;
+  optionalExpression?: Expression;
 }
 
 export type ParamIdentifier = ParamValueIdentifierToken | ParamTypeIdentifierToken;
@@ -345,6 +367,12 @@ export interface TypeIdentifierToken {
   typeIdentifier: TypeIdentifier;
 }
 
+/** : Expression? */
+export interface OptionalType {
+  kind: "OptionalType";
+  optionalExpression?: Expression;
+}
+
 /** " StringChunk[] " */
 export interface String {
   kind: "String";
@@ -380,7 +408,7 @@ export interface Number {
   value: string;
 }
 
-export type AST = Program | Statement | DeclareStatement | TypeDeclareStatement | DeclareFunctionStatement | DeclareTypeFunctionStatement | Declarator | LetDeclarator | VarDeclarator | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | ClosureOrBlockStatement | ClosureOrBlockExpression | FunctionStatement | ClosureExpression | ReturnStatement | IfStatement | ForStatement | ExpressionStatement | ArrowExpressionStatement | ArrowExpression | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression | UnionExpression | Negate | Param | TypeParam | ValueParam | ParamIdentifier | ParamValueIdentifierToken | ParamTypeIdentifierToken | Arg | Identifier | ValueIdentifierToken | TypeIdentifierToken | String | StringChunk | StringContent | Template | ValueIdentifier | TypeIdentifier | Number;
+export type AST = Program | Statement | DeclareStatement | TypeDeclareStatement | DeclareFunctionStatement | DeclareTypeFunctionStatement | Declarator | LetDeclarator | VarDeclarator | AssignStatement | PlusAssignStatement | MinusAssignStatement | TimesAssignStatement | DivideAssignStatement | BlockStatement | ClosureOrBlockStatement | ClosureOrBlockExpression | FunctionStatement | OperatorFunctionStatement | OperatorToken | ClassStatement | ClosureExpression | ReturnStatement | IfStatement | ForStatement | ExpressionStatement | ArrowExpressionStatement | ArrowExpression | Expression | ListExpression | DictionaryExpression | DictionaryItem | MemberExpression | CallExpression | GroupExpression | BinaryExpression | PlusExpression | MinusExpression | TimesExpression | DivideExpression | EqualityExpression | InequalityExpression | GreaterThanExpression | LessThanExpression | GreaterThanOrEqualExpression | LessThanOrEqualExpression | UnionExpression | Negate | Param | TypeParam | ValueParam | ParamIdentifier | ParamValueIdentifierToken | ParamTypeIdentifierToken | Arg | Identifier | ValueIdentifierToken | TypeIdentifierToken | OptionalType | String | StringChunk | StringContent | Template | ValueIdentifier | TypeIdentifier | Number;
 
 /**
 * Context is used to track the source program throughout
@@ -465,6 +493,12 @@ export function parseStatement(context: Context, node: SyntaxNode): Statement {
   if (node.name === "FunctionStatement") {
     return parseFunctionStatement(context, node);
   }
+  if (node.name === "OperatorFunctionStatement") {
+    return parseOperatorFunctionStatement(context, node);
+  }
+  if (node.name === "ClassStatement") {
+    return parseClassStatement(context, node);
+  }
   if (node.name === "ReturnStatement") {
     return parseReturnStatement(context, node);
   }
@@ -474,25 +508,25 @@ export function parseStatement(context: Context, node: SyntaxNode): Statement {
 export function parseDeclareStatement(context: Context, node: SyntaxNode): DeclareStatement {
   const declarator = context.getChild(node, "Declarator");
   const identifier = context.getChild(node, "Identifier");
-  const optionalExpression = node.getChild("Expression");
+  const optionalType = context.getChild(node, "OptionalType");
   const expression = context.getChild(node, "Expression");
   return {
     kind: "DeclareStatement",
     declarator: parseDeclarator(context, declarator),
     identifier: parseIdentifier(context, identifier),
-    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+    optionalType: parseOptionalType(context, optionalType),
     expression: parseExpression(context, expression),
   };
 }
 
 export function parseTypeDeclareStatement(context: Context, node: SyntaxNode): TypeDeclareStatement {
   const typeIdentifier = context.getChild(node, "TypeIdentifier");
-  const optionalExpression = node.getChild("Expression");
+  const optionalType = context.getChild(node, "OptionalType");
   const expression = context.getChild(node, "Expression");
   return {
     kind: "TypeDeclareStatement",
     typeIdentifier: parseTypeIdentifier(context, typeIdentifier),
-    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+    optionalType: parseOptionalType(context, optionalType),
     expression: parseExpression(context, expression),
   };
 }
@@ -632,6 +666,39 @@ export function parseFunctionStatement(context: Context, node: SyntaxNode): Func
     paramList: paramList.map(paramList => parseParam(context, paramList)),
     optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
     closureOrBlockStatement: parseClosureOrBlockStatement(context, closureOrBlockStatement),
+  };
+}
+
+export function parseOperatorFunctionStatement(context: Context, node: SyntaxNode): OperatorFunctionStatement {
+  const operatorToken = context.getChild(node, "OperatorToken");
+  const paramList = node.getChildren("Param");
+  const optionalExpression = node.getChild("Expression");
+  const closureOrBlockStatement = context.getChild(node, "ClosureOrBlockStatement");
+  return {
+    kind: "OperatorFunctionStatement",
+    operatorToken: parseOperatorToken(context, operatorToken),
+    paramList: paramList.map(paramList => parseParam(context, paramList)),
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
+    closureOrBlockStatement: parseClosureOrBlockStatement(context, closureOrBlockStatement),
+  };
+}
+
+export function parseOperatorToken(context: Context, node: SyntaxNode): OperatorToken {
+  return {
+    kind: "OperatorToken",
+    value: context.get(node),
+  };
+}
+
+export function parseClassStatement(context: Context, node: SyntaxNode): ClassStatement {
+  const identifier = context.getChild(node, "Identifier");
+  const expression = context.getChild(node, "Expression");
+  const blockStatement = context.getChild(node, "BlockStatement");
+  return {
+    kind: "ClassStatement",
+    identifier: parseIdentifier(context, identifier),
+    expression: parseExpression(context, expression),
+    blockStatement: parseBlockStatement(context, blockStatement),
   };
 }
 
@@ -931,9 +998,13 @@ export function parseTypeParam(context: Context, node: SyntaxNode): TypeParam {
 
 export function parseValueParam(context: Context, node: SyntaxNode): ValueParam {
   const paramIdentifier = context.getChild(node, "ParamIdentifier");
+  const optionalType = context.getChild(node, "OptionalType");
+  const optionalExpression = node.getChild("Expression");
   return {
     kind: "ValueParam",
     paramIdentifier: parseParamIdentifier(context, paramIdentifier),
+    optionalType: parseOptionalType(context, optionalType),
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
   };
 }
 
@@ -992,6 +1063,14 @@ export function parseTypeIdentifierToken(context: Context, node: SyntaxNode): Ty
   return {
     kind: "TypeIdentifierToken",
     typeIdentifier: parseTypeIdentifier(context, typeIdentifier),
+  };
+}
+
+export function parseOptionalType(context: Context, node: SyntaxNode): OptionalType {
+  const optionalExpression = node.getChild("Expression");
+  return {
+    kind: "OptionalType",
+    optionalExpression: optionalExpression != null ? parseExpression(context, optionalExpression) : undefined,
   };
 }
 

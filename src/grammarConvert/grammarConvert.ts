@@ -249,6 +249,21 @@ class Comment {
           this.optionalNames[x[0]] == null
       )
       .map((x) => x[0]);
+    const leftoverNames = Object.entries(this.names)
+      // Type names that are not caught in single plain names,
+      // single list names, single optional names, or multi names
+      .filter(
+        (x) =>
+          !this.singlePlainNames.includes(x[0]) &&
+          !this.singleListNames.includes(x[0]) &&
+          !this.singleOptionalNames.includes(x[0]) &&
+          !this.multiNames.includes(x[0])
+      );
+    if (leftoverNames.length > 0) {
+      throw new Error(
+        `Uncaught names (${name}): ${leftoverNames.map((x) => x[0]).join(", ")}`
+      );
+    }
   }
 
   /**

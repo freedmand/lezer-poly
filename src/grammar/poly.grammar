@@ -24,17 +24,19 @@ statement[@isGroup=Statement] {
   ForStatement |
   ExpressionStatement |
   FunctionStatement |
+  OperatorFunctionStatement |
+  ClassStatement |
   ReturnStatement
 }
 
 DeclareStatement {
-  /** Declarator Identifier Expression? = Expression */
-  makeStatement<Declarator Identifier optionalType "=" Expression>
+  /** Declarator Identifier OptionalType = Expression */
+  makeStatement<Declarator Identifier OptionalType "=" Expression>
 }
 
 TypeDeclareStatement {
-  /** type TypeIdentifier Expression? = Expression */
-  makeStatement<keyword<"type"> TypeIdentifier optionalType "=" Expression>
+  /** type TypeIdentifier OptionalType = Expression */
+  makeStatement<keyword<"type"> TypeIdentifier OptionalType "=" Expression>
 }
 
 DeclareFunctionStatement {
@@ -105,6 +107,22 @@ ClosureOrBlockExpression {
 FunctionStatement {
   /** fn Identifier ( Param[] ) Expression? ClosureOrBlockStatement */
   keyword<"fn"> Identifier "(" params ")" optionalReturnType ClosureOrBlockStatement
+}
+
+OperatorFunctionStatement {
+  /** operator OperatorToken ( Param[] ) Expression? ClosureOrBlockStatement */
+  keyword<"operator"> OperatorToken "(" params ")" optionalReturnType ClosureOrBlockStatement
+}
+
+OperatorToken {
+  /** . */
+  "+" | "-" | "*" | Divide |
+  "==" | "!=" | ">" | "<" | ">=" | "<="
+}
+
+ClassStatement {
+  /** class Identifier ( Expression ) BlockStatement */
+  keyword<"class"> Identifier "(" Expression ")" BlockStatement
 }
 
 ClosureExpression {
@@ -259,8 +277,8 @@ TypeParam {
 }
 
 ValueParam {
-  /** ParamIdentifier Expression? Expression? */
-  ParamIdentifier optionalType optionalDefault
+  /** ParamIdentifier OptionalType Expression? */
+  ParamIdentifier OptionalType optionalDefault
 }
 
 ParamIdentifier {
@@ -298,7 +316,8 @@ TypeIdentifierToken {
   TypeIdentifier ~closure
 }
 
-optionalType {
+OptionalType {
+  /** : Expression? */
   (":" Expression)?
 }
 

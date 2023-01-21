@@ -5,7 +5,7 @@
 import { styleTags, tags as t } from "@lezer/highlight";
 
 export const polyHighlighting = styleTags({
-  "fn let var return type if for in": t.keyword,
+  "fn let var return type if for in class operator": t.keyword,
   Identifier: t.variableName,
   TypeIdentifier: t.typeName,
   Number: t.number,
